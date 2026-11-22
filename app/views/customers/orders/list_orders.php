@@ -10,7 +10,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Đơn hàng của tôi - FlowerTown</title>
+    <title>Đơn hàng của tôi - Góc Nhỏ Có Hoa</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -279,7 +279,7 @@
             <div class="row align-items-center">
                 <div class="col-6">
                     <a href="index.php?router=customers" class="logo">
-                        <i class="bi bi-flower2"></i> FlowerTown
+                        <i class="bi bi-flower2"></i> Góc Nhỏ Có Hoa
                     </a>
                 </div>
                 <div class="col-6 text-end">

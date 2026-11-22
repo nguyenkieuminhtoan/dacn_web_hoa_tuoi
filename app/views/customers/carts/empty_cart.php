@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Giỏ hàng trống - FlowerTown</title>
+    <title>Giỏ hàng trống - Góc Nhỏ Có Hoa</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -120,7 +120,7 @@
     <header class="header">
         <div class="container text-center">
             <a href="index.php?router=customers" class="logo">
-                <i class="bi bi-flower2"></i> FlowerTown
+                <i class="bi bi-flower2"></i> Góc Nhỏ Có Hoa
             </a>
         </div>
     </header>
@@ -138,7 +138,7 @@
     </div>
 
     <footer class="py-4 text-center">
-        <p class="text-muted small">© 2024 FlowerTown. Kiến tạo không gian từ những đóa hoa.</p>
+        <p class="text-muted small">© 2024 Góc Nhỏ Có Hoa. Kiến tạo không gian từ những đóa hoa.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

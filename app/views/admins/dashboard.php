@@ -1,732 +1,1395 @@
+<?php
+// ================================================================
+// LAYOUT ADMIN — Góc Nhỏ Có Hoa
+// Controller gán $viewFile rồi include file này.
+// ================================================================
+$gnBrand = 'Góc Nhỏ Có Hoa';
+
+// Thông báo thành công / lỗi hiện thành toast (assets/js/popup.js)
+require_once __DIR__ . '/../../../helpers/message_helper.php';
+MessageHelper::$useToast = true;
+// Hàm hiển thị dùng chung cho các trang con (badge, tiền, phân trang...)
+require_once __DIR__ . '/../../../helpers/admin_ui_helper.php';
+
+// ---------- Chế độ popup: chỉ trả về nội dung form (không có sidebar / top bar) ----------
+// admin.js gọi URL form kèm &modal=1 rồi đặt nội dung vào popup form.
+$gnInModal = !empty($_GET['modal']);
+if ($gnInModal) {
+    if (isset($viewFile) && file_exists($viewFile)) {
+        include $viewFile;
+    }
+    MessageHelper::logMessage();
+    return;
+}
+
+$navCtrl   = $_GET['controller'] ?? 'dashboard';
+$navAction = $_GET['action'] ?? 'index';
+$navStatus = $_GET['status'] ?? null;
+
+function gn_url($ctrl, $action = null, $status = null)
+{
+    $url = "index.php?controller=$ctrl";
+    if ($action) $url .= "&action=$action";
+    if ($status) $url .= "&status=$status";
+    return $url;
+}
+
+// Số đơn chờ xác nhận -> hiện badge trên menu Đơn hàng
+$gnPending = (int) pdo_connect()->query("SELECT COUNT(*) FROM orders WHERE order_status = 'pending'")->fetchColumn();
+
+// Cấu trúc menu dùng chung cho sidebar (desktop) và bảng "Thêm" (mobile)
+//  - 'ctrl'    : controller làm mục này sáng lên
+//  - 'actions' : (tùy chọn) chỉ sáng khi đúng các action này — dùng khi 2 mục chung 1 controller
+//  - item con  : [nhãn, icon, controller, action, status, badge?]
+$gnPromoCodeActions = ['listPromotion', 'addPromotion', 'updatePromotion', 'deletePromotion'];
+$gnPromoProductActions = [
+    'listAllProductPromotion', 'listApplyProductPromotion', 'listInactiveProductPromotion',
+    'listExpiredProductPromotion', 'applyProductPromotion', 'updateProductPromotion', 'removeProductPromotion',
+];
+
+$gnMenu = [
+    ['type' => 'link', 'label' => 'Tổng quan', 'icon' => 'fa-chart-pie', 'ctrl' => ['dashboard'], 'href' => gn_url('dashboard')],
+
+    ['type' => 'section', 'label' => 'Cửa hàng'],
+    ['type' => 'link', 'label' => 'Sản phẩm', 'icon' => 'fa-cube', 'ctrl' => ['product'], 'href' => gn_url('product', 'listProduct')],
+    ['type' => 'link', 'label' => 'Danh mục', 'icon' => 'fa-layer-group', 'ctrl' => ['category'], 'href' => gn_url('category', 'listCategory')],
+
+    ['type' => 'section', 'label' => 'Bán hàng'],
+    ['type' => 'group', 'label' => 'Đơn hàng', 'icon' => 'fa-receipt', 'ctrl' => ['order'], 'badge' => $gnPending, 'items' => [
+        ['Tất cả', 'fa-list', 'order', 'listOrder', null],
+        ['Chờ xác nhận', 'fa-clock', 'order', 'listOrder', 'pending', $gnPending],
+        ['Đã xác nhận', 'fa-circle-check', 'order', 'listOrder', 'confirmed'],
+        ['Đang giao', 'fa-truck-fast', 'order', 'listOrder', 'shipping'],
+        ['Hoàn thành', 'fa-flag-checkered', 'order', 'listOrder', 'completed'],
+        ['Đã hủy', 'fa-ban', 'order', 'listOrder', 'cancelled'],
+    ]],
+
+    ['type' => 'section', 'label' => 'Khuyến mãi'],
+    ['type' => 'link', 'label' => 'Mã khuyến mãi', 'icon' => 'fa-ticket', 'ctrl' => ['promotion'], 'actions' => $gnPromoCodeActions, 'href' => gn_url('promotion', 'listPromotion')],
+    ['type' => 'group', 'label' => 'Khuyến mãi sản phẩm', 'icon' => 'fa-tags', 'ctrl' => ['promotion'], 'actions' => $gnPromoProductActions, 'items' => [
+        ['Tất cả', 'fa-list', 'promotion', 'listAllProductPromotion', null],
+        ['Đang áp dụng', 'fa-fire', 'promotion', 'listApplyProductPromotion', null],
+        ['Tạm ngưng', 'fa-circle-pause', 'promotion', 'listInactiveProductPromotion', null],
+        ['Hết hạn', 'fa-hourglass-end', 'promotion', 'listExpiredProductPromotion', null],
+    ]],
+
+    ['type' => 'section', 'label' => 'Hệ thống'],
+    ['type' => 'group', 'label' => 'Tài khoản', 'icon' => 'fa-user-shield', 'ctrl' => ['accountCustomer', 'accountAdmin'], 'items' => [
+        ['Khách hàng', 'fa-users', 'accountCustomer', 'listAccountCustomer', null],
+        ['Quản trị viên', 'fa-crown', 'accountAdmin', 'listAccountAdmin', null],
+    ]],
+    ['type' => 'link', 'label' => 'Cài đặt', 'icon' => 'fa-sliders', 'ctrl' => [], 'href' => '#', 'soon' => true],
+];
+
+// Thanh tab dưới đáy (mobile): 4 mục chính + "Thêm" — cùng thứ tự với sidebar
+$gnTabs = [
+    ['Tổng quan', 'fa-chart-pie', 'dashboard', gn_url('dashboard'), 0],
+    ['Sản phẩm', 'fa-cube', 'product', gn_url('product', 'listProduct'), 0],
+    ['Đơn hàng', 'fa-receipt', 'order', gn_url('order', 'listOrder'), $gnPending],
+    ['Khuyến mãi', 'fa-tags', 'promotion', gn_url('promotion', 'listPromotion'), 0],
+];
+$gnTabCtrls = array_column($gnTabs, 2);
+
+$gnIsCtrl = fn($ctrls) => in_array($navCtrl, (array) $ctrls, true);
+// Mục menu cấp 1 có đang active không (xét thêm 'actions' nếu có)
+$gnIsOn = fn($m) => !empty($m['ctrl']) && $gnIsCtrl($m['ctrl'])
+    && (empty($m['actions']) || in_array($navAction, $m['actions'], true));
+$gnIsItem = fn($it) => $navCtrl === $it[2] && $navAction === $it[3] && $navStatus === $it[4];
+$gnBadge = fn($n) => $n > 0 ? '<span class="gn-badge" title="' . $n . ' đơn chờ xác nhận">' . ($n > 99 ? '99+' : $n) . '</span>' : '';
+
+// Tên trang hiện tại (hiện trên top bar và tab trình duyệt)
+$gnPageLabel = $navCtrl === 'profile' ? 'Hồ sơ của tôi' : 'Tổng quan';
+foreach ($gnMenu as $m) {
+    if ($gnIsOn($m)) {
+        $gnPageLabel = $m['label'];
+        foreach ($m['items'] ?? [] as $it) {
+            if ($gnIsItem($it)) $gnPageLabel = $m['label'] . ' · ' . $it[0];
+        }
+        break;
+    }
+}
+
+$gnAdmin     = $_SESSION['admin'] ?? [];
+$gnAdminName = $gnAdmin['full_name'] ?? ($gnAdmin['username'] ?? 'Quản trị viên');
+$gnAdminUser = $gnAdmin['username'] ?? '';
+$gnInitial   = mb_strtoupper(mb_substr(trim($gnAdminName), 0, 1, 'UTF-8'), 'UTF-8');
+$gnLogout    = '../../../index.php?router=logout';
+// Hộp xác nhận trước khi đăng xuất (popup.js) — dùng cho mọi nút Đăng xuất trong trang quản trị
+$gnLogoutConfirm = 'data-confirm="Bạn sẽ cần đăng nhập lại để vào trang quản trị." data-confirm-title="Đăng xuất?"'
+    . ' data-confirm-variant="warning" data-confirm-ok="Đăng xuất" data-confirm-cancel="Ở lại"';
+
+// ---------- Nút quay lại: về trang cha của trang hiện tại ----------
+// "controller.action" => [controller cha, action cha, tên trang cha]; trang không có trong bảng -> về Tổng quan
+$gnBackMap = [
+    'product.addProduct'               => ['product', 'listProduct', 'Sản phẩm'],
+    'product.updateProduct'            => ['product', 'listProduct', 'Sản phẩm'],
+    'category.addCategory'             => ['category', 'listCategory', 'Danh mục'],
+    'category.updateCategory'          => ['category', 'listCategory', 'Danh mục'],
+    'order.listOrderDetail'            => ['order', 'listOrder', 'Đơn hàng'],
+    'promotion.addPromotion'           => ['promotion', 'listPromotion', 'Mã khuyến mãi'],
+    'promotion.updatePromotion'        => ['promotion', 'listPromotion', 'Mã khuyến mãi'],
+    'promotion.applyProductPromotion'  => ['promotion', 'listAllProductPromotion', 'Khuyến mãi sản phẩm'],
+    'promotion.updateProductPromotion' => ['promotion', 'listAllProductPromotion', 'Khuyến mãi sản phẩm'],
+    'accountAdmin.addAccountAdmin'     => ['accountAdmin', 'listAccountAdmin', 'Quản trị viên'],
+];
+// ---------- Form thêm / sửa mở dạng popup ----------
+// "controller.action" => cỡ popup ('' | 'lg' | 'xl'). Các trang này khi mở thẳng (GET)
+// sẽ chuyển về danh sách cha rồi tự bật popup (&open=...).
+$gnFormModals = [
+    'product.addProduct'               => 'xl',
+    'product.updateProduct'            => 'xl',
+    'category.addCategory'             => '',
+    'category.updateCategory'          => '',
+    'promotion.addPromotion'           => 'lg',
+    'promotion.updatePromotion'        => 'lg',
+    'promotion.applyProductPromotion'  => 'lg',
+    'promotion.updateProductPromotion' => 'lg',
+    'accountAdmin.addAccountAdmin'     => 'lg',
+];
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($gnFormModals["$navCtrl.$navAction"])) {
+    [$pCtrl, $pAction] = $gnBackMap["$navCtrl.$navAction"];
+    $openUrl = 'index.php?' . http_build_query($_GET);
+    header('Location: ' . gn_url($pCtrl, $pAction) . '&open=' . rawurlencode($openUrl));
+    exit;
+}
+
+$gnBack = null; // [url, tên trang cha]
+if ($navCtrl !== 'dashboard') {
+    [$bCtrl, $bAction, $bLabel] = $gnBackMap["$navCtrl.$navAction"] ?? ['dashboard', null, 'Tổng quan'];
+    $bUrl = gn_url($bCtrl, $bAction);
+
+    // Vừa đi từ chính trang cha (vd: danh sách đang lọc / ở trang 2) -> quay về đúng trạng thái đó
+    $ref = $_SERVER['HTTP_REFERER'] ?? '';
+    if ($ref && parse_url($ref, PHP_URL_PATH) === parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) {
+        parse_str((string) parse_url($ref, PHP_URL_QUERY), $refQuery);
+        if (($refQuery['controller'] ?? 'dashboard') === $bCtrl && ($refQuery['action'] ?? null) === $bAction) {
+            $bUrl = 'index.php?' . http_build_query($refQuery);
+        }
+    }
+    $gnBack = [$bUrl, $bLabel];
+}
+?>
 <!DOCTYPE html>
 <html lang="vi">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Admin Dashboard | K.M.Twain</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title><?= htmlspecialchars($gnPageLabel) ?> | Quản trị <?= $gnBrand ?></title>
 
-    <!-- Bootstrap 5 + Icons + Google Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Giao diện dùng chung cho các trang con -->
+    <link rel="stylesheet" href="../../../assets/css/admins/admin.css">
+    <!-- Popup dùng chung: hộp xác nhận (data-confirm) + toast thông báo -->
+    <script src="../../../assets/js/popup.js"></script>
+    <!-- Kiểm tra form, chọn ảnh, lọc danh sách, popup form (data-validate / data-upload / data-filter) -->
+    <script>
+        window.GNFormModals = <?= json_encode($gnFormModals) ?>;
+    </script>
+    <script src="../../../assets/js/admin.js" defer></script>
+
+    <!-- Hiệu ứng chuyển trang + thanh tiến trình (phải chạy trước lần vẽ đầu tiên) -->
+    <script>
+        (function() {
+            var root = document.documentElement;
+            // Trình duyệt chưa hỗ trợ View Transitions giữa các trang -> dùng hiệu ứng hiện dần dự phòng
+            if (!('onpagereveal' in window)) root.classList.add('gn-anim-fallback');
+
+            // Chiều chuyển trang: bấm "Quay lại" hoặc Back/Forward của trình duyệt -> trượt ngược
+            window.addEventListener('pagereveal', function(e) {
+                if (!e.viewTransition) return;
+                var dir = null;
+                try {
+                    dir = sessionStorage.getItem('gn-nav-dir');
+                    sessionStorage.removeItem('gn-nav-dir');
+                } catch (err) {}
+                var nav = window.navigation && navigation.activation;
+                if (dir === 'back' || (nav && nav.navigationType === 'traverse')) {
+                    e.viewTransition.types.add('back');
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (e.target.closest && e.target.closest('.gn-back-btn')) {
+                    try { sessionStorage.setItem('gn-nav-dir', 'back'); } catch (err) {}
+                }
+            }, true);
+
+            // ---------- Thanh tiến trình khi đang chuyển trang ----------
+            function startProgress() {
+                var bar = document.getElementById('gnProgress');
+                if (bar) bar.classList.add('is-loading');
+            }
+            function stopProgress() {
+                var bar = document.getElementById('gnProgress');
+                if (bar) bar.classList.remove('is-loading');
+            }
+            if (window.navigation) {
+                // Navigation API: bắt mọi kiểu chuyển trang (link, form, location.href sau khi xác nhận...)
+                navigation.addEventListener('navigate', function(e) {
+                    if (e.destination.sameDocument || e.downloadRequest !== null && e.downloadRequest !== undefined) return;
+                    startProgress();
+                });
+                // Chuyển trang bị hủy / lỗi mạng -> tắt thanh tiến trình
+                navigation.addEventListener('navigateerror', stopProgress);
+            } else {
+                // Dự phòng: link thường và form (bỏ qua khi bị chặn, vd: mở popup form)
+                document.addEventListener('click', function(e) {
+                    var a = e.target.closest && e.target.closest('a[href]');
+                    if (!a || a.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+                    var href = a.getAttribute('href');
+                    if (!href || href.charAt(0) === '#' || /^(mailto|tel|javascript):/i.test(href)) return;
+                    setTimeout(function() { if (!e.defaultPrevented) startProgress(); }, 0);
+                });
+                document.addEventListener('submit', function(e) {
+                    setTimeout(function() { if (!e.defaultPrevented) startProgress(); }, 0);
+                });
+            }
+            // Quay lại bằng bộ nhớ đệm (bfcache) -> tắt thanh tiến trình còn treo
+            window.addEventListener('pageshow', stopProgress);
+        })();
+    </script>
 
     <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+        :root {
+            --gn-side-w: 264px;
+            --gn-rail-w: 76px;
+            --gn-top-h: 64px;
+            --gn-tab-h: 64px;
 
-    body {
-        font-family: 'Inter', sans-serif;
-        background: radial-gradient(circle at 10% 20%, rgba(241, 245, 249, 1) 0%, rgba(226, 232, 240, 1) 100%);
-        overflow-x: hidden;
-        color: #0a0c10;
-    }
+            --gn-accent: #e11d48;
+            --gn-accent-strong: #be123c;
+            --gn-accent-soft: #fff1f2;
+            --gn-accent-ring: #fecdd3;
 
-    /* ========= SIDEBAR ========= */
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 260px;
-        height: 100vh;
-        background: rgba(15, 23, 42, 0.94);
-        backdrop-filter: blur(18px);
-        border-right: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 12px 0 40px rgba(0, 0, 0, 0.12);
-        z-index: 1050;
-        transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-        overflow: visible;
-    }
-
-    .sidebar-inner {
-        height: 100%;
-        overflow-y: auto;
-        overflow-x: visible;
-        scrollbar-width: thin;
-    }
-
-    .sidebar.collapsed {
-        width: 80px;
-    }
-
-    .sidebar.show-mobile {
-        transform: translateX(0) !important;
-    }
-
-    .sidebar.collapsed .nav-text,
-    .sidebar.collapsed .dropdown-default {
-        display: none;
-    }
-
-    /* Brand */
-    .brand {
-        padding: 24px 18px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .brand-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .sidebar-toggle-btn {
-        width: 36px;
-        height: 36px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        color: #e2e8f0;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .sidebar-toggle-btn:hover {
-        background: #3b82f6;
-        color: white;
-        transform: scale(0.96);
-        border-color: #3b82f6;
-    }
-
-    .logo-glow {
-        font-size: 1.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #FFFFFF, #A5F3FC, #38BDF8);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-        white-space: nowrap;
-    }
-
-    .logo-icon-small {
-        display: none;
-        font-size: 1.6rem;
-        background: linear-gradient(135deg, #fff, #7dd3fc);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-    }
-
-    .sidebar.collapsed .logo-glow {
-        display: none;
-    }
-
-    .sidebar.collapsed .logo-icon-small {
-        display: block;
-    }
-
-    .sidebar.collapsed .brand-left {
-        justify-content: center;
-        width: 100%;
-        gap: 0;
-    }
-
-    .sidebar.collapsed .brand {
-        justify-content: center;
-        padding: 24px 0;
-    }
-
-    .sidebar.collapsed .sidebar-toggle-btn {
-        margin: 0 auto;
-    }
-
-    /* ========= DROPDOWN COLLAPSED ========= */
-    .sidebar.collapsed .nav-item {
-        position: relative;
-    }
-
-    .sidebar.collapsed .dropdown-collapsed {
-        position: fixed;
-        top: 0;
-        left: 0;
-        min-width: 250px;
-        padding: 10px 0;
-        border-radius: 18px;
-        background: rgba(15, 23, 42, 0.88);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
-        z-index: 99999;
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-        transform: translateX(8px) scale(0.96);
-        transform-origin: left center;
-        transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
-    }
-
-    .sidebar.collapsed .nav-item.show-flyout .dropdown-collapsed {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-        transform: translateX(0) scale(1);
-    }
-
-    .sidebar.collapsed .dropdown-collapsed .dropdown-item-custom {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 11px 16px;
-        margin: 4px 8px;
-        border-radius: 12px;
-        color: #e2e8f0;
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 500;
-        white-space: nowrap;
-        transition: all 0.2s ease;
-    }
-
-    .sidebar.collapsed .dropdown-collapsed .dropdown-item-custom i {
-        width: 18px;
-        text-align: center;
-        color: #94a3b8;
-        font-size: 0.95rem;
-    }
-
-    .sidebar.collapsed .dropdown-collapsed .dropdown-item-custom:hover {
-        background: rgba(59, 130, 246, 0.18);
-        color: #fff;
-    }
-
-    .sidebar.collapsed .dropdown-collapsed .dropdown-item-custom:hover i {
-        color: #60a5fa;
-    }
-
-    /* ========= DROPDOWN EXPANDED ========= */
-    .sidebar:not(.collapsed) .dropdown-collapsed {
-        display: none;
-    }
-
-    .sidebar:not(.collapsed) .dropdown-default {
-        display: block;
-        margin-left: 36px;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.35s ease-out;
-    }
-
-    .sidebar:not(.collapsed) .nav-item.open .dropdown-default {
-        max-height: 500px;
-    }
-
-    .sidebar:not(.collapsed) .dropdown-default .nav-link {
-        padding: 8px 16px 8px 28px;
-        font-size: 0.8rem;
-        gap: 10px;
-    }
-
-    /* ========= NAV ========= */
-    .sidebar .nav-link {
-        color: #cbd5e1;
-        padding: 12px 16px;
-        margin: 4px 0;
-        border-radius: 14px;
-        transition: all 0.2s ease;
-        font-weight: 500;
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        white-space: nowrap;
-        cursor: pointer;
-        text-decoration: none;
-    }
-
-    .sidebar .nav-link>i:first-child {
-        width: 24px;
-        font-size: 1.1rem;
-        text-align: center;
-        flex-shrink: 0;
-    }
-
-    .sidebar .nav-link:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        transform: translateX(4px);
-    }
-
-    .sidebar.collapsed .nav-link {
-        justify-content: flex-start;
-        padding: 12px;
-        position: relative;
-    }
-
-    .sidebar.collapsed .nav-link>i:first-child {
-        width: 100%;
-        text-align: center;
-        margin: 0;
-        font-size: 1.3rem;
-    }
-
-    .sidebar.collapsed .nav-link>i:first-child {
-        margin: 0;
-        font-size: 1.3rem;
-    }
-
-    .sidebar.collapsed .nav-link:hover {
-        transform: translateX(0);
-        background: rgba(59, 130, 246, 0.25);
-    }
-
-    .sidebar .nav-link.active {
-        background: rgba(59, 130, 246, 0.2);
-        color: white;
-        border-left: 3px solid #3b82f6;
-    }
-
-    hr.bg-light {
-        background: rgba(255, 255, 255, 0.1);
-        margin: 12px 0;
-    }
-
-    /* ========= TOP NAVBAR ========= */
-    .navbar-admin {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(20px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.6);
-        padding: 0.7rem 2rem;
-        z-index: 1040;
-    }
-
-    .btn-glass {
-        background: rgba(255, 255, 255, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.8);
-        border-radius: 40px;
-        color: #1e293b;
-        padding: 8px 18px;
-        backdrop-filter: blur(4px);
-    }
-
-    .avatar-icon {
-        font-size: 2.4rem;
-        color: #3b82f6;
-    }
-
-    /* ========= MAIN ========= */
-    .main-content {
-        margin-left: 260px;
-        transition: margin-left 0.3s ease;
-        padding: 100px 32px 50px 32px;
-        min-height: 100vh;
-    }
-
-    .sidebar.collapsed~.main-content {
-        margin-left: 80px;
-    }
-
-    /* ========= DROPDOWN ARROW ========= */
-    .dropdown-arrow {
-        margin-left: auto;
-        width: auto !important;
-        font-size: 0.8rem !important;
-        transition: transform 0.25s ease;
-        opacity: 0.8;
-    }
-
-    /* Khi dropdown mở thì xoay mũi tên */
-    .nav-item.open>.nav-link .dropdown-arrow,
-    .nav-item.show-flyout>.nav-link .dropdown-arrow {
-        transform: rotate(180deg);
-        opacity: 1;
-    }
-
-    .sidebar.collapsed .nav-link .dropdown-arrow {
-        display: block !important;
-        position: absolute;
-        right: 10px;
-        font-size: 0.65rem !important;
-        opacity: 0.7;
-    }
-
-    .nav-dropdown-toggle:hover .dropdown-arrow {
-        transform: translateY(1px);
-    }
-
-    .nav-dropdown-toggle {
-        width: 100%;
-    }
-
-    /* ========= MOBILE ========= */
-    @media (max-width: 768px) {
-        .main-content {
-            margin-left: 0;
-            padding: 90px 16px 40px;
+            --gn-bg: #f6f4f5;
+            --gn-surface: #ffffff;
+            --gn-border: #eee6e9;
+            --gn-text: #1f2937;
+            --gn-text-2: #475569;
+            --gn-muted: #94a3b8;
         }
 
-        .sidebar {
-            transform: translateX(-100%);
-            width: 260px;
+        /* html body: thắng reboot của các trang con có nạp lại bootstrap */
+        html body.gn-admin {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--gn-bg);
+            color: var(--gn-text);
+            overflow-x: hidden;
         }
 
-        .sidebar.collapsed {
-            transform: translateX(0);
-            width: 260px;
+        /* ================= SIDEBAR ================= */
+        .gn-sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: var(--gn-side-w);
+            background: var(--gn-surface);
+            border-right: 1px solid var(--gn-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 1040;
+            transition: width .25s ease;
         }
 
-        .sidebar.collapsed .nav-text {
-            display: inline;
+        .gn-brand {
+            height: var(--gn-top-h);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 18px;
+            border-bottom: 1px solid var(--gn-border);
+            text-decoration: none;
+            flex-shrink: 0;
+            overflow: hidden;
         }
 
-        .sidebar.collapsed .logo-glow {
-            display: block;
+        .gn-brand-mark {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #fb7185, var(--gn-accent));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(225, 29, 72, .25);
         }
 
-        .sidebar.collapsed .logo-icon-small {
+        .gn-brand-text {
+            line-height: 1.15;
+            white-space: nowrap;
+        }
+
+        .gn-brand-name {
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--gn-text);
+            letter-spacing: -.01em;
+        }
+
+        .gn-brand-sub {
+            font-size: .72rem;
+            color: var(--gn-muted);
+            font-weight: 500;
+        }
+
+        .gn-nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px 12px 16px;
+            scrollbar-width: thin;
+        }
+
+        .gn-section {
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--gn-muted);
+            padding: 18px 12px 6px;
+            white-space: nowrap;
+        }
+
+        .gn-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 10px 12px;
+            margin: 2px 0;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--gn-text-2);
+            font-size: .9rem;
+            font-weight: 500;
+            text-decoration: none;
+            text-align: left;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background .15s ease, color .15s ease;
+        }
+
+        .gn-link>i:first-child {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+            color: var(--gn-muted);
+            flex-shrink: 0;
+            transition: color .15s ease;
+        }
+
+        .gn-link:hover {
+            background: #f8f5f6;
+            color: var(--gn-text);
+        }
+
+        .gn-link:hover>i:first-child {
+            color: var(--gn-text-2);
+        }
+
+        .gn-link:focus-visible {
+            outline: 2px solid var(--gn-accent-ring);
+            outline-offset: 1px;
+        }
+
+        .gn-link.active {
+            background: var(--gn-accent-soft);
+            color: var(--gn-accent-strong);
+            font-weight: 600;
+        }
+
+        .gn-link.active>i:first-child {
+            color: var(--gn-accent);
+        }
+
+        .gn-label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gn-caret {
+            font-size: .7rem;
+            color: var(--gn-muted);
+            transition: transform .2s ease;
+        }
+
+        .gn-group.open>.gn-link .gn-caret {
+            transform: rotate(180deg);
+        }
+
+        .gn-soon {
+            font-size: .62rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: var(--gn-muted);
+        }
+
+        .gn-link.is-soon {
+            cursor: default;
+            opacity: .75;
+        }
+
+        /* Badge số đơn chờ xác nhận */
+        .gn-badge {
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: var(--gn-accent);
+            color: #fff;
+            font-size: .7rem;
+            font-weight: 700;
+            line-height: 20px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+
+        body.gn-collapsed .gn-group>.gn-link {
+            position: relative;
+        }
+
+        body.gn-collapsed .gn-group>.gn-link .gn-badge {
+            position: absolute;
+            top: 4px;
+            right: 12px;
+            min-width: 16px;
+            height: 16px;
+            line-height: 16px;
+            padding: 0 4px;
+            font-size: .6rem;
+            box-shadow: 0 0 0 2px var(--gn-surface);
+        }
+
+        /* Menu con (sidebar mở rộng) */
+        .gn-sub {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows .25s ease;
+        }
+
+        .gn-sub-inner {
+            overflow: hidden;
+            margin-left: 21px;
+            padding-left: 12px;
+            border-left: 1px solid var(--gn-border);
+        }
+
+        .gn-group.open>.gn-sub {
+            grid-template-rows: 1fr;
+        }
+
+        .gn-sub .gn-link {
+            padding: 8px 10px;
+            font-size: .85rem;
+        }
+
+        .gn-sub .gn-link>i:first-child {
+            font-size: .85rem;
+        }
+
+        .gn-flyout-title {
             display: none;
         }
 
-        .sidebar.collapsed .nav-link {
-            justify-content: flex-start;
+        /* Thẻ admin cuối sidebar */
+        .gn-user {
+            border-top: 1px solid var(--gn-border);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            overflow: hidden;
         }
 
-        .sidebar.collapsed .dropdown-collapsed {
-            left: 70px;
+        .gn-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--gn-accent-soft);
+            color: var(--gn-accent-strong);
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            text-decoration: none;
         }
-    }
+
+        .gn-user-info {
+            flex: 1;
+            min-width: 0;
+            line-height: 1.2;
+        }
+
+        .gn-user-name {
+            font-weight: 600;
+            font-size: .85rem;
+            color: var(--gn-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gn-user-role {
+            font-size: .72rem;
+            color: var(--gn-muted);
+        }
+
+        .gn-icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--gn-border);
+            background: var(--gn-surface);
+            color: var(--gn-text-2);
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            text-decoration: none;
+            transition: all .15s ease;
+        }
+
+        .gn-icon-btn:hover {
+            border-color: var(--gn-accent-ring);
+            color: var(--gn-accent);
+            background: var(--gn-accent-soft);
+        }
+
+        /* ================= SIDEBAR THU GỌN (rail) ================= */
+        body.gn-collapsed .gn-sidebar {
+            width: var(--gn-rail-w);
+        }
+
+        body.gn-collapsed .gn-brand {
+            padding: 0;
+            justify-content: center;
+        }
+
+        body.gn-collapsed .gn-brand-text,
+        body.gn-collapsed .gn-label,
+        body.gn-collapsed .gn-caret,
+        body.gn-collapsed .gn-soon,
+        body.gn-collapsed .gn-user-info,
+        body.gn-collapsed .gn-user .gn-icon-btn {
+            display: none;
+        }
+
+        body.gn-collapsed .gn-section {
+            font-size: 0;
+            padding: 10px 0;
+        }
+
+        body.gn-collapsed .gn-section::after {
+            content: "";
+            display: block;
+            height: 1px;
+            background: var(--gn-border);
+            margin: 0 14px;
+        }
+
+        body.gn-collapsed .gn-nav>.gn-link,
+        body.gn-collapsed .gn-group>.gn-link {
+            justify-content: center;
+            padding: 12px 0;
+        }
+
+        body.gn-collapsed .gn-nav>.gn-link>i:first-child,
+        body.gn-collapsed .gn-group>.gn-link>i:first-child {
+            font-size: 1.1rem;
+        }
+
+        body.gn-collapsed .gn-user {
+            justify-content: center;
+        }
+
+        /* Menu con dạng flyout khi thu gọn */
+        body.gn-collapsed .gn-sub {
+            position: fixed;
+            left: calc(var(--gn-rail-w) + 8px);
+            top: 0;
+            min-width: 230px;
+            display: block;
+            background: var(--gn-surface);
+            border: 1px solid var(--gn-border);
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, .14);
+            padding: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-6px);
+            transition: opacity .15s ease, transform .15s ease, visibility .15s;
+            z-index: 1060;
+        }
+
+        body.gn-collapsed .gn-group.flyout>.gn-sub {
+            opacity: 1;
+            visibility: visible;
+            transform: none;
+        }
+
+        body.gn-collapsed .gn-sub-inner {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            overflow: visible;
+        }
+
+        body.gn-collapsed .gn-sub .gn-label {
+            display: inline;
+        }
+
+        body.gn-collapsed .gn-flyout-title {
+            display: block;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--gn-muted);
+            padding: 6px 10px 4px;
+        }
+
+        /* ================= TOP BAR ================= */
+        .gn-topbar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            left: var(--gn-side-w);
+            height: var(--gn-top-h);
+            background: rgba(255, 255, 255, .92);
+            border-bottom: 1px solid var(--gn-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 24px;
+            z-index: 1030;
+            transition: left .25s ease;
+        }
+
+        @supports (backdrop-filter: blur(8px)) {
+            .gn-topbar {
+                background: rgba(255, 255, 255, .8);
+                backdrop-filter: blur(10px);
+            }
+        }
+
+        body.gn-collapsed .gn-topbar {
+            left: var(--gn-rail-w);
+        }
+
+        .gn-page-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        .gn-top-brand {
+            display: none;
+        }
+
+        /* Nút quay lại trên top bar */
+        .gn-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 36px;
+            padding: 0 14px 0 12px;
+            border-radius: 10px;
+            border: 1px solid var(--gn-border);
+            background: var(--gn-surface);
+            color: var(--gn-text-2);
+            font-size: .85rem;
+            font-weight: 600;
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: all .15s ease;
+        }
+
+        .gn-back-btn:hover,
+        .gn-back-btn:focus-visible {
+            border-color: var(--gn-accent-ring);
+            background: var(--gn-accent-soft);
+            color: var(--gn-accent-strong);
+        }
+
+        .gn-back-btn i {
+            transition: transform .15s ease;
+        }
+
+        .gn-back-btn:hover i {
+            transform: translateX(-2px);
+        }
+
+        .gn-top-user {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--gn-text);
+            border: 0;
+            background: transparent;
+            padding: 4px;
+            border-radius: 999px;
+        }
+
+        .gn-top-user:hover {
+            background: #f8f5f6;
+        }
+
+        .gn-top-user .gn-top-name {
+            font-weight: 600;
+            font-size: .875rem;
+        }
+
+        /* ================= NỘI DUNG ================= */
+        .gn-main {
+            margin-left: var(--gn-side-w);
+            padding: calc(var(--gn-top-h) + 24px) 28px 40px;
+            min-height: 100vh;
+            transition: margin-left .25s ease;
+        }
+
+        body.gn-collapsed .gn-main {
+            margin-left: var(--gn-rail-w);
+        }
+
+        /* ================= TAB DƯỚI ĐÁY (mobile) ================= */
+        .gn-tabbar {
+            display: none;
+        }
+
+        .gn-sheet .gn-sheet-group {
+            margin-bottom: 18px;
+        }
+
+        .gn-sheet-title {
+            font-size: .7rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--gn-muted);
+            margin: 0 4px 8px;
+        }
+
+        .gn-sheet-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .gn-sheet-grid .gn-link {
+            margin: 0;
+            background: #faf8f9;
+            border: 1px solid var(--gn-border);
+            padding: 11px 12px;
+            font-size: .85rem;
+            white-space: normal;
+            line-height: 1.25;
+        }
+
+        .gn-sheet-grid .gn-link.active {
+            background: var(--gn-accent-soft);
+            border-color: var(--gn-accent-ring);
+        }
+
+        /* Tablet: sidebar mặc định thu gọn (xử lý trong JS), nội dung hẹp lại */
+        @media (max-width: 991.98px) {
+            .gn-main {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+        }
+
+        /* Mobile: ẩn sidebar, dùng tab dưới đáy */
+        @media (max-width: 767.98px) {
+
+            .gn-sidebar,
+            .gn-desktop-only {
+                display: none !important;
+            }
+
+            .gn-topbar,
+            body.gn-collapsed .gn-topbar {
+                left: 0;
+                padding: 0 16px;
+                padding-top: env(safe-area-inset-top);
+                height: calc(var(--gn-top-h) + env(safe-area-inset-top));
+            }
+
+            .gn-top-brand {
+                display: grid;
+            }
+
+            /* Mobile: nút quay lại thay chỗ logo, chỉ còn icon */
+            .gn-topbar.has-back .gn-top-brand {
+                display: none;
+            }
+
+            .gn-back-btn {
+                width: 36px;
+                padding: 0;
+                justify-content: center;
+            }
+
+            .gn-back-btn span {
+                display: none;
+            }
+
+            .gn-top-brand .gn-brand-mark {
+                width: 34px;
+                height: 34px;
+                font-size: .95rem;
+            }
+
+            .gn-page-title {
+                font-size: 1rem;
+            }
+
+            .gn-top-user .gn-top-name {
+                display: none;
+            }
+
+            .gn-main,
+            body.gn-collapsed .gn-main {
+                margin-left: 0;
+                padding: calc(var(--gn-top-h) + env(safe-area-inset-top) + 16px) 16px calc(var(--gn-tab-h) + env(safe-area-inset-bottom) + 24px);
+            }
+
+            .gn-tabbar {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: calc(var(--gn-tab-h) + env(safe-area-inset-bottom));
+                padding-bottom: env(safe-area-inset-bottom);
+                background: var(--gn-surface);
+                border-top: 1px solid var(--gn-border);
+                box-shadow: 0 -6px 20px rgba(15, 23, 42, .06);
+                z-index: 1035;
+            }
+
+            .gn-tab {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                border: 0;
+                background: transparent;
+                color: var(--gn-muted);
+                font-size: .68rem;
+                font-weight: 600;
+                text-decoration: none;
+                position: relative;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .gn-tab i {
+                font-size: 1.15rem;
+            }
+
+            .gn-tab-icon {
+                position: relative;
+                line-height: 1;
+            }
+
+            .gn-tab-icon .gn-badge {
+                position: absolute;
+                top: -7px;
+                left: 12px;
+                min-width: 17px;
+                height: 17px;
+                line-height: 17px;
+                padding: 0 4px;
+                font-size: .6rem;
+                box-shadow: 0 0 0 2px var(--gn-surface);
+            }
+
+            .gn-tab.active {
+                color: var(--gn-accent);
+            }
+
+            .gn-tab.active::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                width: 28px;
+                height: 3px;
+                border-radius: 0 0 4px 4px;
+                background: var(--gn-accent);
+            }
+
+            .gn-sheet.offcanvas-bottom {
+                height: auto;
+                max-height: 82vh;
+                border-radius: 20px 20px 0 0;
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .gn-sheet-handle {
+                width: 40px;
+                height: 4px;
+                border-radius: 4px;
+                background: #e2e8f0;
+                margin: 10px auto 0;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .gn-mobile-only {
+                display: none !important;
+            }
+        }
+
+        /* ================= HIỆU ỨNG CHUYỂN TRANG ================= */
+        /* View Transitions giữa các trang (Chrome/Edge 126+, Safari 18.2+) */
+        @view-transition {
+            navigation: auto;
+        }
+
+        /* Sidebar, top bar, tab đáy đứng yên — chỉ phần nội dung chuyển động */
+        .gn-sidebar {
+            view-transition-name: gn-sidebar;
+        }
+
+        .gn-topbar {
+            view-transition-name: gn-topbar;
+        }
+
+        .gn-tabbar {
+            view-transition-name: gn-tabbar;
+        }
+
+        .gn-main {
+            view-transition-name: gn-main;
+        }
+
+        ::view-transition-group(gn-sidebar),
+        ::view-transition-group(gn-tabbar),
+        ::view-transition-group(gn-main),
+        ::view-transition-old(gn-sidebar),
+        ::view-transition-new(gn-sidebar),
+        ::view-transition-old(gn-tabbar),
+        ::view-transition-new(gn-tabbar) {
+            animation: none;
+        }
+
+        ::view-transition-old(gn-sidebar),
+        ::view-transition-old(gn-tabbar) {
+            display: none;
+        }
+
+        /* Top bar: chỉ tên trang đổi -> mờ chéo thật nhanh */
+        ::view-transition-group(gn-topbar) {
+            animation-duration: 160ms;
+        }
+
+        /* Nội dung: trang cũ trượt sang trái + mờ đi, trang mới trượt vào từ phải */
+        ::view-transition-old(gn-main) {
+            animation: 160ms cubic-bezier(.4, 0, 1, 1) both gn-page-out;
+        }
+
+        ::view-transition-new(gn-main) {
+            animation: 280ms cubic-bezier(0, 0, .2, 1) 60ms both gn-page-in;
+        }
+
+        /* Quay lại: đảo chiều */
+        html:active-view-transition-type(back)::view-transition-old(gn-main) {
+            animation-name: gn-page-out-back;
+        }
+
+        html:active-view-transition-type(back)::view-transition-new(gn-main) {
+            animation-name: gn-page-in-back;
+        }
+
+        @keyframes gn-page-out {
+            to {
+                opacity: 0;
+                transform: translateX(-24px);
+            }
+        }
+
+        @keyframes gn-page-in {
+            from {
+                opacity: 0;
+                transform: translateX(24px);
+            }
+        }
+
+        @keyframes gn-page-out-back {
+            to {
+                opacity: 0;
+                transform: translateX(24px);
+            }
+        }
+
+        @keyframes gn-page-in-back {
+            from {
+                opacity: 0;
+                transform: translateX(-24px);
+            }
+        }
+
+        /* Dự phòng (Firefox...): nội dung trang mới hiện dần lên */
+        .gn-anim-fallback .gn-main {
+            animation: gn-page-rise 320ms cubic-bezier(0, 0, .2, 1) both;
+        }
+
+        @keyframes gn-page-rise {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
+
+        /* Thanh tiến trình khi đang chuyển trang */
+        .gn-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0;
+            z-index: 2200;
+            background: linear-gradient(90deg, #fb7185, var(--gn-accent));
+            box-shadow: 0 0 8px rgba(225, 29, 72, .45);
+            border-radius: 0 3px 3px 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .gn-progress.is-loading {
+            opacity: 1;
+            animation: gn-progress-grow 8s cubic-bezier(.08, .8, .2, 1) forwards;
+        }
+
+        @keyframes gn-progress-grow {
+            0% {
+                width: 0;
+            }
+
+            10% {
+                width: 35%;
+            }
+
+            100% {
+                width: 92%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+            }
+
+            ::view-transition-group(*),
+            ::view-transition-old(*),
+            ::view-transition-new(*) {
+                animation: none !important;
+            }
+
+            .gn-anim-fallback .gn-main {
+                animation: none;
+            }
+
+            .gn-progress.is-loading {
+                animation: none;
+                width: 60%;
+            }
+        }
     </style>
 </head>
 
-<body>
+<body class="gn-admin">
+    <div class="gn-progress" id="gnProgress" role="progressbar" aria-hidden="true"></div>
+    <script>
+        // Áp trạng thái thu gọn trước khi vẽ để tránh nháy layout
+        (function() {
+            var saved = null;
+            try {
+                saved = localStorage.getItem('gnSidebarCollapsed');
+            } catch (e) {}
+            var w = window.innerWidth;
+            var collapsed = w >= 768 && (saved === null ? w < 992 : saved === '1');
+            if (collapsed) document.body.classList.add('gn-collapsed');
+        })();
+    </script>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar" id="adminSidebar">
-        <div class="sidebar-inner">
+    <!-- ================= SIDEBAR (tablet / desktop) ================= -->
+    <aside class="gn-sidebar" id="gnSidebar" aria-label="Menu quản trị">
+        <a class="gn-brand" href="<?= gn_url('dashboard') ?>" title="<?= $gnBrand ?>">
+            <span class="gn-brand-mark"><i class="fas fa-spa"></i></span>
+            <span class="gn-brand-text">
+                <span class="gn-brand-name d-block"><?= $gnBrand ?></span>
+                <span class="gn-brand-sub">Trang quản trị</span>
+            </span>
+        </a>
 
-            <div class="brand">
-                <div class="brand-left">
-                    <button class="sidebar-toggle-btn d-none d-md-flex" type="button" id="toggleSidebarBtnDesktop">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <button class="sidebar-toggle-btn d-md-none" type="button" id="closeSidebarBtnMobile">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <div class="logo-glow">✦ K.M.<span style="color:#bae6fd;">Twain</span></div>
-                    <div class="logo-icon-small">✦</div>
-                </div>
+        <nav class="gn-nav" id="gnNav">
+            <?php foreach ($gnMenu as $gi => $m): ?>
+                <?php if ($m['type'] === 'section'): ?>
+                    <div class="gn-section"><?= $m['label'] ?></div>
+
+                <?php elseif ($m['type'] === 'link'): ?>
+                    <?php $soon = !empty($m['soon']); $on = $gnIsOn($m); ?>
+                    <a class="gn-link<?= $on ? ' active' : '' ?><?= $soon ? ' is-soon' : '' ?>"
+                        href="<?= $m['href'] ?>" title="<?= $m['label'] ?>"
+                        <?= $soon ? 'aria-disabled="true" onclick="return false"' : '' ?>
+                        <?= $on ? 'aria-current="page"' : '' ?>>
+                        <i class="fas <?= $m['icon'] ?>"></i>
+                        <span class="gn-label"><?= $m['label'] ?></span>
+                        <?php if ($soon): ?><span class="gn-soon">Sắp có</span><?php endif; ?>
+                    </a>
+
+                <?php else: ?>
+                    <?php $groupOn = $gnIsOn($m); ?>
+                    <div class="gn-group<?= $groupOn ? ' open' : '' ?>">
+                        <button type="button" class="gn-link gn-group-toggle<?= $groupOn ? ' active' : '' ?>"
+                            title="<?= $m['label'] ?>" aria-expanded="<?= $groupOn ? 'true' : 'false' ?>"
+                            aria-controls="gnSub<?= $gi ?>">
+                            <i class="fas <?= $m['icon'] ?>"></i>
+                            <span class="gn-label"><?= $m['label'] ?></span>
+                            <?= $gnBadge($m['badge'] ?? 0) ?>
+                            <i class="fas fa-chevron-down gn-caret"></i>
+                        </button>
+                        <div class="gn-sub" id="gnSub<?= $gi ?>">
+                            <div class="gn-sub-inner">
+                                <div class="gn-flyout-title"><?= $m['label'] ?></div>
+                                <?php foreach ($m['items'] as $it): ?>
+                                    <a class="gn-link<?= $gnIsItem($it) ? ' active' : '' ?>"
+                                        href="<?= gn_url($it[2], $it[3], $it[4]) ?>"
+                                        <?= $gnIsItem($it) ? 'aria-current="page"' : '' ?>>
+                                        <i class="fas <?= $it[1] ?>"></i>
+                                        <span class="gn-label"><?= $it[0] ?></span>
+                                        <?= $gnBadge($it[5] ?? 0) ?>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </nav>
+
+        <div class="gn-user">
+            <a class="gn-avatar" href="index.php?controller=profile" title="Hồ sơ của tôi"><?= htmlspecialchars($gnInitial) ?></a>
+            <div class="gn-user-info">
+                <div class="gn-user-name"><?= htmlspecialchars($gnAdminName) ?></div>
+                <div class="gn-user-role">@<?= htmlspecialchars($gnAdminUser) ?></div>
             </div>
-
-            <nav class="nav flex-column">
-                <a class="nav-link active" href="index.php?controller=dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span class="nav-text">Tổng quan</span>
-                </a>
-                <a class="nav-link" href="index.php?controller=product&action=listProduct">
-                    <i class="fas fa-cube"></i>
-                    <span class="nav-text">Sản phẩm</span>
-                </a>
-                <a class="nav-link" href="index.php?controller=category&action=listCategory">
-                    <i class="fa-solid fa-layer-group"></i>
-                    <span class="nav-text">Danh mục</span>
-                </a>
-
-                <!-- Đơn hàng dropdown -->
-                <div class="nav-item">
-                    <a class="nav-link nav-dropdown-toggle" href="#">
-                        <i class="fas fa-truck-fast"></i>
-                        <span class="nav-text">Đơn hàng</span>
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
-                    </a>
-                    <!-- Dropdown cho chế độ mở rộng (click) -->
-                    <div class="dropdown-default">
-                        <a class="nav-link" href="index.php?controller=order&action=listOrder"><i
-                                class="fas fa-circle"></i> <span class="nav-text">Tất cả đơn</span></a>
-                        <a class="nav-link" href="index.php?controller=order&action=listOrder&status=pending"><i
-                                class="fas fa-clock"></i> <span class="nav-text">Chờ xác nhận</span></a>
-                        <a class="nav-link" href="index.php?controller=order&action=listOrder&status=confirmed"><i
-                                class="fas fa-check-circle"></i> <span class="nav-text">Đã xác nhận</span></a>
-                        <a class="nav-link" href="index.php?controller=order&action=listOrder&status=shipping"><i
-                                class="fas fa-shipping-fast"></i> <span class="nav-text">Đang giao</span></a>
-                        <a class="nav-link" href="index.php?controller=order&action=listOrder&status=completed"><i
-                                class="fas fa-flag-checkered"></i> <span class="nav-text">Hoàn thành</span></a>
-                        <a class="nav-link" href="index.php?controller=order&action=listOrder&status=cancelled"><i
-                                class="fas fa-ban"></i> <span class="nav-text">Đã hủy</span></a>
-                    </div>
-                    <!-- Dropdown cho chế độ thu gọn (hover - hiện bên phải) -->
-                    <div class="dropdown-collapsed">
-                        <a class="dropdown-item-custom" href="index.php?controller=order&action=listOrder"><i
-                                class="fas fa-circle"></i> Tất cả đơn</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=order&action=listOrder&status=pending"><i
-                                class="fas fa-clock"></i> Chờ xác nhận</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=order&action=listOrder&status=confirmed"><i
-                                class="fas fa-check-circle"></i> Đã xác nhận</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=order&action=listOrder&status=shipping"><i
-                                class="fas fa-shipping-fast"></i> Đang giao</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=order&action=listOrder&status=completed"><i
-                                class="fas fa-flag-checkered"></i> Hoàn thành</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=order&action=listOrder&status=cancelled"><i
-                                class="fas fa-ban"></i> Đã hủy</a>
-                    </div>
-                </div>
-
-                <!-- Khuyến mãi dropdown -->
-                <div class="nav-item">
-                    <a class="nav-link nav-dropdown-toggle" href="#">
-                        <i class="fas fa-tags"></i>
-                        <span class="nav-text">Khuyến mãi</span>
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
-                    </a>
-                    <div class="dropdown-default">
-                        <a class="nav-link" href="index.php?controller=promotion&action=listAllProductPromotion"><i
-                                class="fas fa-gift"></i> <span class="nav-text">Tất cả SPKM</span></a>
-                        <a class="nav-link" href="index.php?controller=promotion&action=listPromotion"><i
-                                class="fas fa-ticket"></i> <span class="nav-text">Code khuyến mãi</span></a>
-                        <a class="nav-link" href="index.php?controller=promotion&action=listApplyProductPromotion"><i
-                                class="fas fa-fire"></i> <span class="nav-text">Đang khuyến mãi</span></a>
-                        <a class="nav-link" href="index.php?controller=promotion&action=listExpiredProductPromotion"><i
-                                class="fas fa-hourglass-end"></i> <span class="nav-text">Hết hạn</span></a>
-                        <a class="nav-link" href="index.php?controller=promotion&action=listInactiveProductPromotion"><i
-                                class="fas fa-pause-circle"></i> <span class="nav-text">Tạm ngưng</span></a>
-                        <a class="nav-link" href="index.php?controller=promotion&action=applyProductPromotion"><i
-                                class="fas fa-plus-circle"></i> <span class="nav-text">Áp dụng KM</span></a>
-                    </div>
-                    <div class="dropdown-collapsed">
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=promotion&action=listAllProductPromotion"><i
-                                class="fas fa-gift"></i> Tất cả SPKM</a>
-                        <a class="dropdown-item-custom" href="index.php?controller=promotion&action=listPromotion"><i
-                                class="fas fa-ticket"></i> Code khuyến mãi</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=promotion&action=listApplyProductPromotion"><i
-                                class="fas fa-fire"></i> Đang khuyến mãi</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=promotion&action=listExpiredProductPromotion"><i
-                                class="fas fa-hourglass-end"></i> Hết hạn</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=promotion&action=listInactiveProductPromotion"><i
-                                class="fas fa-pause-circle"></i> Tạm ngưng</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=promotion&action=applyProductPromotion"><i
-                                class="fas fa-plus-circle"></i> Áp dụng KM</a>
-                    </div>
-                </div>
-
-                <a class="nav-link" href="#"><i class="fa-regular fa-message"></i> <span class="nav-text">Bình
-                        luận</span></a>
-
-                <!-- Tài khoản dropdown -->
-                <div class="nav-item">
-                    <a class="nav-link nav-dropdown-toggle" href="#">
-                        <i class="fas fa-user-shield"></i>
-                        <span class="nav-text">Tài khoản</span>
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
-                    </a>
-                    <div class="dropdown-default">
-                        <a class="nav-link" href="index.php?controller=accountAdmin&action=listAccountAdmin"><i
-                                class="fas fa-crown"></i> <span class="nav-text">Quản trị viên</span></a>
-                        <a class="nav-link" href="index.php?controller=accountCustomer&action=listAccountCustomer"><i
-                                class="fas fa-users"></i> <span class="nav-text">Khách hàng</span></a>
-                    </div>
-                    <div class="dropdown-collapsed">
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=accountAdmin&action=listAccountAdmin"><i
-                                class="fas fa-crown"></i> Quản trị viên</a>
-                        <a class="dropdown-item-custom"
-                            href="index.php?controller=accountCustomer&action=listAccountCustomer"><i
-                                class="fas fa-users"></i> Khách hàng</a>
-                    </div>
-                </div>
-
-                <a class="nav-link" href="#"><i class="fas fa-sliders-h"></i> <span class="nav-text">Cài đặt</span></a>
-                <hr class="bg-light opacity-25">
-                <a class="nav-link text-danger" href="../../../index.php"><i class="fas fa-sign-out-alt"></i> <span
-                        class="nav-text">Đăng xuất</span></a>
-            </nav>
-
+            <a class="gn-icon-btn" href="<?= $gnLogout ?>" title="Đăng xuất" aria-label="Đăng xuất" <?= $gnLogoutConfirm ?>><i class="fas fa-arrow-right-from-bracket"></i></a>
         </div>
-    </div>
+    </aside>
 
-    <!-- TOP BAR -->
-    <nav class="navbar navbar-expand navbar-admin fixed-top">
-        <div class="container-fluid">
-            <button class="btn btn-glass" type="button" id="toggleSidebarBtnMobile">
-                <i class="fas fa-bars"></i>
+    <!-- ================= TOP BAR ================= -->
+    <header class="gn-topbar<?= $gnBack ? ' has-back' : '' ?>">
+        <button class="gn-icon-btn gn-desktop-only" type="button" id="gnToggle" title="Thu gọn / mở rộng menu"
+            aria-controls="gnSidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+        <a class="gn-top-brand" href="<?= gn_url('dashboard') ?>" aria-label="<?= $gnBrand ?>">
+            <span class="gn-brand-mark"><i class="fas fa-spa"></i></span>
+        </a>
+        <?php if ($gnBack): ?>
+            <a class="gn-back-btn" href="<?= htmlspecialchars($gnBack[0]) ?>"
+                title="Quay lại <?= $gnBack[1] ?>" aria-label="Quay lại <?= $gnBack[1] ?>">
+                <i class="fas fa-arrow-left"></i><span>Quay lại</span>
+            </a>
+        <?php endif; ?>
+        <h1 class="gn-page-title"><?= htmlspecialchars($gnPageLabel) ?></h1>
+
+        <div class="dropdown ms-auto">
+            <button class="gn-top-user dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="gn-avatar"><?= htmlspecialchars($gnInitial) ?></span>
+                <span class="gn-top-name"><?= htmlspecialchars($gnAdminName) ?></span>
             </button>
-            <div class="ms-auto d-flex align-items-center">
-                <div class="dropdown">
-                    <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" role="button"
-                        data-bs-toggle="dropdown" style="color:#0f172a; gap: 12px;">
-                        <i class="fa-solid fa-circle-user avatar-icon"></i>
-                        <span class="d-none d-sm-inline fw-semibold">
-                            <?php
-                            if (isset($_SESSION['admin'])) {
-                                echo htmlspecialchars($_SESSION['admin']['username']);
-                            } else {
-                                echo "Quản trị viên";
-                            }
-                            ?>
-                        </span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2">
-                        <li><a class="dropdown-item rounded-3" href="profile.php"><i class="fas fa-id-card me-2"></i>Hồ
-                                sơ</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item text-danger rounded-3" href="../../../index.php"><i
-                                    class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
-                    </ul>
-                </div>
-            </div>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2 p-2">
+                <li class="px-3 py-2 small text-muted">Đăng nhập: <strong>@<?= htmlspecialchars($gnAdminUser) ?></strong></li>
+                <li><a class="dropdown-item rounded-3" href="index.php?controller=profile"><i class="fas fa-id-card me-2"></i>Hồ sơ</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger rounded-3" href="<?= $gnLogout ?>" <?= $gnLogoutConfirm ?>><i class="fas fa-arrow-right-from-bracket me-2"></i>Đăng xuất</a></li>
+            </ul>
         </div>
-    </nav>
+    </header>
 
-    <div class="main-content" id="mainContent">
+    <!-- ================= NỘI DUNG TRANG ================= -->
+    <main class="gn-main" id="mainContent">
         <?php
         if (isset($viewFile) && file_exists($viewFile)) {
             include $viewFile;
         }
+        // Hiện nốt thông báo nếu trang con không tự gọi logMessage()
+        MessageHelper::logMessage();
         ?>
+    </main>
+
+    <!-- ================= TAB DƯỚI ĐÁY (mobile) ================= -->
+    <nav class="gn-tabbar gn-mobile-only" aria-label="Menu chính">
+        <?php foreach ($gnTabs as $t): ?>
+            <a class="gn-tab<?= $navCtrl === $t[2] ? ' active' : '' ?>" href="<?= $t[3] ?>"
+                <?= $navCtrl === $t[2] ? 'aria-current="page"' : '' ?>>
+                <span class="gn-tab-icon"><i class="fas <?= $t[1] ?>"></i><?= $gnBadge($t[4]) ?></span><span><?= $t[0] ?></span>
+            </a>
+        <?php endforeach; ?>
+        <button class="gn-tab<?= in_array($navCtrl, $gnTabCtrls, true) ? '' : ' active' ?>" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#gnSheet" aria-controls="gnSheet">
+            <i class="fas fa-grip"></i><span>Thêm</span>
+        </button>
+    </nav>
+
+    <!-- Bảng "Thêm" trượt từ dưới lên -->
+    <div class="offcanvas offcanvas-bottom gn-sheet gn-mobile-only" tabindex="-1" id="gnSheet" aria-labelledby="gnSheetLabel">
+        <div class="gn-sheet-handle"></div>
+        <div class="offcanvas-header pb-2">
+            <h5 class="offcanvas-title fw-bold" id="gnSheetLabel">Tất cả chức năng</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+        </div>
+        <div class="offcanvas-body pt-0">
+            <?php
+            // Gom menu thành các nhóm cho bảng mobile
+            $sheet = [];
+            $current = null;
+            foreach ($gnMenu as $m) {
+                if ($m['type'] === 'section') {
+                    $current = $m['label'];
+                } elseif ($m['type'] === 'group') {
+                    $sheet[$m['label']] = array_map(fn($it) => [
+                        'label' => $it[0], 'icon' => $it[1], 'href' => gn_url($it[2], $it[3], $it[4]),
+                        'active' => $gnIsItem($it), 'soon' => false, 'badge' => $it[5] ?? 0,
+                    ], $m['items']);
+                } elseif ($current) {
+                    $sheet[$current][] = [
+                        'label' => $m['label'], 'icon' => $m['icon'], 'href' => $m['href'],
+                        'active' => $gnIsOn($m), 'soon' => !empty($m['soon']), 'badge' => 0,
+                    ];
+                }
+            }
+            ?>
+            <?php foreach ($sheet as $title => $links): ?>
+                <div class="gn-sheet-group">
+                    <div class="gn-sheet-title"><?= $title ?></div>
+                    <div class="gn-sheet-grid">
+                        <?php foreach ($links as $l): ?>
+                            <a class="gn-link<?= $l['active'] ? ' active' : '' ?><?= $l['soon'] ? ' is-soon' : '' ?>"
+                                href="<?= $l['href'] ?>" <?= $l['soon'] ? 'aria-disabled="true" onclick="return false"' : '' ?>>
+                                <i class="fas <?= $l['icon'] ?>"></i>
+                                <span class="gn-label"><?= $l['label'] ?></span>
+                                <?= $gnBadge($l['badge']) ?>
+                                <?php if ($l['soon']): ?><span class="gn-soon">Sắp có</span><?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+
+            <div class="gn-sheet-group mb-2">
+                <div class="gn-sheet-title">Tài khoản của tôi</div>
+                <div class="gn-sheet-grid">
+                    <a class="gn-link" href="index.php?controller=profile"><i class="fas fa-id-card"></i><span class="gn-label">Hồ sơ</span></a>
+                    <a class="gn-link text-danger" href="<?= $gnLogout ?>" <?= $gnLogoutConfirm ?>><i class="fas fa-arrow-right-from-bracket text-danger"></i><span class="gn-label">Đăng xuất</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup form dùng chung cho mọi form thêm / sửa (nội dung nạp bằng admin.js) -->
+    <div class="modal fade gn-form-modal" id="gnFormModal" tabindex="-1" aria-labelledby="gnFormModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="gn-form-modal-heading">
+                        <h2 class="modal-title" id="gnFormModalTitle">Đang tải...</h2>
+                        <p class="gn-form-modal-sub" id="gnFormModalSub"></p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body" id="gnFormModalBody"></div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    (function() {
-        const sidebar = document.getElementById('adminSidebar');
-        const toggleBtnDesktop = document.getElementById('toggleSidebarBtnDesktop');
-        const toggleBtnMobile = document.getElementById('toggleSidebarBtnMobile');
-        const closeBtnMobile = document.getElementById('closeSidebarBtnMobile');
-        const BREAKPOINT = 768;
+        (function() {
+            const body = document.body;
+            const nav = document.getElementById('gnNav');
+            const toggle = document.getElementById('gnToggle');
+            const isCollapsed = () => body.classList.contains('gn-collapsed');
 
-        function isMobile() {
-            return window.innerWidth <= BREAKPOINT;
-        }
-
-        function saveSidebarState() {
-            localStorage.setItem('adminSidebarCollapsed', sidebar.classList.contains('collapsed'));
-        }
-
-        function closeAllDropdowns(exceptItem = null) {
-            document.querySelectorAll('.sidebar .nav-item.open, .sidebar .nav-item.show-flyout').forEach(item => {
-                if (item !== exceptItem) {
-                    item.classList.remove('open');
-                    item.classList.remove('show-flyout');
-                }
-            });
-        }
-
-        function updateCollapsedDropdownPosition() {
-            if (!sidebar || !sidebar.classList.contains('collapsed') || isMobile()) return;
-
-            sidebar.querySelectorAll('.nav-item').forEach(item => {
-                const dropdown = item.querySelector('.dropdown-collapsed');
-                const link = item.querySelector('.nav-link');
-                if (!dropdown || !link) return;
-
-                const rect = link.getBoundingClientRect();
-                dropdown.style.top = `${rect.top}px`;
-                dropdown.style.left = `${rect.right + 10}px`;
-            });
-        }
-
-        function toggleDesktopSidebar() {
-            sidebar.classList.toggle('collapsed');
-            closeAllDropdowns();
-            saveSidebarState();
-            requestAnimationFrame(updateCollapsedDropdownPosition);
-        }
-
-        function toggleMobileSidebar() {
-            sidebar.classList.toggle('show-mobile');
-            if (sidebar.classList.contains('show-mobile')) {
-                sidebar.style.transform = 'translateX(0)';
-            } else {
-                sidebar.style.transform = 'translateX(-100%)';
+            function closeFlyouts(except) {
+                nav.querySelectorAll('.gn-group.flyout').forEach(g => {
+                    if (g !== except) {
+                        g.classList.remove('flyout');
+                        g.querySelector('.gn-group-toggle').setAttribute('aria-expanded', 'false');
+                    }
+                });
             }
-        }
 
-        function handleSidebarToggle() {
-            isMobile() ? toggleMobileSidebar() : toggleDesktopSidebar();
-        }
+            // Thu gọn / mở rộng sidebar (desktop + tablet)
+            if (toggle) {
+                toggle.addEventListener('click', function() {
+                    body.classList.toggle('gn-collapsed');
+                    closeFlyouts();
+                    try {
+                        localStorage.setItem('gnSidebarCollapsed', isCollapsed() ? '1' : '0');
+                    } catch (e) {}
+                });
+            }
 
-        function bindDropdownEvents() {
-            document.querySelectorAll('.sidebar .nav-item > .nav-link.nav-dropdown-toggle').forEach(toggle => {
-                toggle.onclick = function(e) {
-                    e.preventDefault();
+            // Nhóm menu: mở rộng -> accordion; thu gọn -> flyout bên phải
+            nav.querySelectorAll('.gn-group-toggle').forEach(btn => {
+                btn.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    const group = btn.closest('.gn-group');
 
-                    const parentItem = this.closest('.nav-item');
-
-                    if (isMobile()) {
-                        const isOpen = parentItem.classList.contains('open');
-                        closeAllDropdowns(parentItem);
-                        parentItem.classList.toggle('open', !isOpen);
+                    if (isCollapsed()) {
+                        const willOpen = !group.classList.contains('flyout');
+                        closeFlyouts(group);
+                        group.classList.toggle('flyout', willOpen);
+                        btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                        if (willOpen) {
+                            const sub = group.querySelector('.gn-sub');
+                            const r = btn.getBoundingClientRect();
+                            const maxTop = window.innerHeight - sub.offsetHeight - 12;
+                            sub.style.top = Math.max(12, Math.min(r.top - 8, maxTop)) + 'px';
+                        }
                         return;
                     }
 
-                    if (sidebar.classList.contains('collapsed')) {
-                        const isFlyoutOpen = parentItem.classList.contains('show-flyout');
-
-                        document.querySelectorAll('.sidebar .nav-item.show-flyout').forEach(item => {
-                            if (item !== parentItem) item.classList.remove('show-flyout');
-                        });
-
-                        parentItem.classList.toggle('show-flyout', !isFlyoutOpen);
-                        updateCollapsedDropdownPosition();
-                        return;
-                    }
-
-                    const isOpen = parentItem.classList.contains('open');
-                    closeAllDropdowns(parentItem);
-                    parentItem.classList.toggle('open', !isOpen);
-                };
+                    const open = group.classList.toggle('open');
+                    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
             });
-        }
 
-        function initSidebarState() {
-            if (isMobile()) {
-                sidebar.classList.remove('collapsed');
-                sidebar.classList.remove('show-mobile');
-                sidebar.style.transform = 'translateX(-100%)';
-            } else {
-                sidebar.style.transform = '';
-                const saved = localStorage.getItem('adminSidebarCollapsed');
-                sidebar.classList.toggle('collapsed', saved === 'true');
-                requestAnimationFrame(updateCollapsedDropdownPosition);
-            }
-        }
-
-        document.addEventListener('click', function(e) {
-            // Đóng mobile sidebar khi click ra ngoài
-            if (isMobile() && sidebar.classList.contains('show-mobile')) {
-                if (!e.target.closest('.sidebar') && !e.target.closest('#toggleSidebarBtnMobile')) {
-                    toggleMobileSidebar();
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.gn-group')) closeFlyouts();
+            });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') closeFlyouts();
+            });
+            // Chỉ đóng flyout khi thật sự cuộn dọc (đổi độ rộng sidebar cũng phát sự kiện scroll)
+            let lastScrollTop = nav.scrollTop;
+            nav.addEventListener('scroll', () => {
+                if (nav.scrollTop !== lastScrollTop) {
+                    lastScrollTop = nav.scrollTop;
+                    closeFlyouts();
                 }
-            }
-            if (!e.target.closest('.sidebar')) closeAllDropdowns();
-        });
-
-        if (toggleBtnDesktop) toggleBtnDesktop.addEventListener('click', handleSidebarToggle);
-        if (toggleBtnMobile) toggleBtnMobile.addEventListener('click', handleSidebarToggle);
-        if (closeBtnMobile) closeBtnMobile.addEventListener('click', toggleMobileSidebar);
-
-        window.addEventListener('resize', initSidebarState);
-        window.addEventListener('scroll', updateCollapsedDropdownPosition);
-        window.addEventListener('resize', updateCollapsedDropdownPosition);
-
-        bindDropdownEvents();
-        initSidebarState();
-    })();
+            });
+            window.addEventListener('resize', () => closeFlyouts());
+        })();
     </script>
 </body>
 

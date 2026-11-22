@@ -21,7 +21,7 @@ $baseUrl     = $baseUrl ?? '?';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>FlowerTown - Cửa hàng hoa tươi cao cấp</title>
+    <title>Góc Nhỏ Có Hoa - Cửa hàng hoa tươi cao cấp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link
@@ -545,7 +545,7 @@ $baseUrl     = $baseUrl ?? '?';
             <div class="row align-items-center g-3">
                 <div class="col-md-3 col-6">
                     <a href="index.php?router=customers" class="text-decoration-none">
-                        <div class="logo"><i class="bi bi-flower2"></i> FlowerTown</div>
+                        <div class="logo"><i class="bi bi-flower2"></i> Góc Nhỏ Có Hoa</div>
                     </a>
                 </div>
                 <div class="col-md-5 col-12 order-md-0 order-3">
@@ -795,8 +795,8 @@ $baseUrl     = $baseUrl ?? '?';
         <div class="container">
             <div class="row g-5">
                 <div class="col-lg-4">
-                    <div class="footer-logo"><i class="bi bi-flower2"></i> FlowerTown</div>
-                    <p class="opacity-75">Chúng tôi tin rằng mỗi đóa hoa đều mang một câu chuyện riêng. FlowerTown cam kết mang đến những thiết kế hoa tươi tinh tế nhất cho mọi khoảnh khắc đáng nhớ của bạn.</p>
+                    <div class="footer-logo"><i class="bi bi-flower2"></i> Góc Nhỏ Có Hoa</div>
+                    <p class="opacity-75">Chúng tôi tin rằng mỗi đóa hoa đều mang một câu chuyện riêng. Góc Nhỏ Có Hoa cam kết mang đến những thiết kế hoa tươi tinh tế nhất cho mọi khoảnh khắc đáng nhớ của bạn.</p>
                     <div class="d-flex gap-3 mt-4">
                         <a href="#" class="fs-4"><i class="bi bi-facebook"></i></a>
                         <a href="#" class="fs-4"><i class="bi bi-instagram"></i></a>
@@ -832,7 +832,7 @@ $baseUrl     = $baseUrl ?? '?';
             </div>
             <hr class="my-5 opacity-10">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <p class="small m-0 opacity-50">&copy; 2024 FlowerTown. All rights reserved.</p>
+                <p class="small m-0 opacity-50">&copy; 2024 Góc Nhỏ Có Hoa. All rights reserved.</p>
                 <div class="d-flex gap-4 small opacity-50">
                     <a href="#">Privacy Policy</a>
                     <a href="#">Terms of Service</a>

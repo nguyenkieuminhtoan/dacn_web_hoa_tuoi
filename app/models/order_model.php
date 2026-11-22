@@ -11,7 +11,7 @@ class OrderModel
     {
         $sql = "SELECT o.*, cus.full_name AS customer_name
         FROM orders o JOIN customers cus ON o.customer_id= cus.customer_id 
-        ORDER BY o.customer_id ASC
+        ORDER BY o.order_date DESC, o.order_id DESC
         ";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
@@ -73,7 +73,7 @@ class OrderModel
             FROM orders o
             JOIN customers cus ON o.customer_id = cus.customer_id
             WHERE o.order_status = ?
-            ORDER BY o.order_id ASC";
+            ORDER BY o.order_date DESC, o.order_id DESC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$order_status]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

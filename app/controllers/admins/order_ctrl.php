@@ -24,20 +24,19 @@ class OrderController
 
     public function listOrderDetail()
     {
-        $order_id = $_GET['order_id'];
-        if (isset($order_id)) {
-            $order = $this->model->getByIdOrder($order_id);
-
-            if ($order) {
-                $listOrderDetail = $this->model->getByIdOrderDetail($order_id);
-            } else {
-                MessageHelper::error("Không có đơn hàng này");
-                header("Location: index.php?controller=order&action=listOrder");
-            }
-        } else {
+        $order_id = $_GET['order_id'] ?? null;
+        if (!$order_id) {
             MessageHelper::error("Không tìm thấy order_id");
             header("Location: index.php?controller=order&action=listOrder");
+            exit;
         }
+        $order = $this->model->getByIdOrder($order_id);
+        if (!$order) {
+            MessageHelper::error("Không có đơn hàng này");
+            header("Location: index.php?controller=order&action=listOrder");
+            exit;
+        }
+        $listOrderDetail = $this->model->getByIdOrderDetail($order_id);
         $viewFile = "../../views/admins/orders/list_order_detail.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }

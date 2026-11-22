@@ -13,7 +13,7 @@ class AccountAdminModel
         $sql = "SELECT *FROM admins";
         $stmt = $pdo->prepare($sql);
         $stmt->execute();
-        return $stmt;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function addAccountAdmin($username, $email, $hashedPass, $full_name, $phone)
