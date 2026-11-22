@@ -1,97 +1,81 @@
 <?php
-// code test data
-
-require_once __DIR__ . '/../../../../models/account_admin_model.php';
-require_once __DIR__ . '/../../../../../config/config.php';
-
-$accAdminModel = new AccountAdminModel();
-$listAccAdmin = $accAdminModel->getAllAccountAdmin();
-
+/**
+ * Biến từ AccountAdminController::listAccountAdmin():
+ * @var array $listAccAdmin
+ */
+$currentAdminId = (int) ($_SESSION['admin']['admin_id'] ?? 0);
 ?>
-<!DOCTYPE html>
-<html lang="vi">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Danh sách Tài khoản Admin</title>
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .col-password {
-            max-width: 350px;
-            /* giới hạn chiều rộng */
-            word-wrap: break-word;
-            /* tự xuống dòng khi dài */
-            white-space: normal;
-            /* cho phép xuống dòng */
-        }
-    </style>
-</head>
-
-<body class="p-1 m-1">
-    <div class="container">
-        <h2 class="mb-4 text-center fw-bold">Danh sách Tài khoản Admin</h2>
-        <!-- log thông báo -->
-        <?php if (isset($_SESSION['success'])): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?= $_SESSION['success']; ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            <?php unset($_SESSION['success']); ?>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?= $_SESSION['error']; ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
-        <!-- log thông báo -->
-        <a href="index.php?controller=accountAdmin&action=addAccountAdmin" class="btn btn-primary mb-3">+ Tạo tài khoản</a>
-        <table class="table table-hover table-bordered align-middle text-center">
-            <thead class="table-secondary">
-                <tr>
-                    <th>ID</th>
-                    <th>Tên tài khoản</th>
-                    <th>Email</th>
-                    <th class="col-password">Mật khẩu</th>
-                    <th>Tên quản trị</th>
-                    <th>Số điện thoại</th>
-                    <th>Ngày tạo</th>
-                    <th>Ngày cập nhật</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($listAccAdmin as $acc): ?>
-                    <tr>
-                        <td style="font-weight: bold;"><?= $acc['admin_id'] ?></td>
-                        <td><?= $acc['username'] ?></td>
-                        <td><?= $acc['email'] ?></td>
-                        <td class="col-password"><?= $acc['password'] ?></td>
-                        <td><?= $acc['full_name'] ?></td>
-                        <td><?= $acc['phone'] ?></td>
-                        <td><?= $acc['created_at'] ?></td>
-                        <td><?= $acc['updated_at'] ?></td>
-                        <td class="align-middle text-center">
-                            <div class="d-inline-flex justify-content-center align-items-center gap-2">
-                                <a href="index.php?controller=accountAdmin&action=updateAccountAdmin&admin_id=<?= $acc['admin_id'] ?>"
-                                    onclick="return confirm('Bạn có chắc muốn cập nhật')"
-                                    class="btn btn-warning btn-sm">
-                                    <i class="fa-solid fa-pen-to-square"></i></a>|
-                                <a href="index.php?controller=accountAdmin&action=deleteAccountAdmin&admin_id=<?= $acc['admin_id'] ?>"
-                                    onclick="return confirm('Bạn có chắc muốn xóa')"
-                                    class="btn btn-danger btn-sm">
-                                    <i class="fa-solid fa-trash"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="ad-head">
+    <div>
+        <h2 class="ad-head-title">Quản trị viên</h2>
+        <p class="ad-head-sub"><?= count($listAccAdmin) ?> tài khoản có quyền vào trang quản trị</p>
     </div>
-</body>
+    <div class="ad-head-actions">
+        <a href="index.php?controller=accountAdmin&action=addAccountAdmin" class="btn ad-btn-primary">
+            <i class="fas fa-user-plus"></i> Thêm quản trị viên
+        </a>
+    </div>
+</div>
 
-</html>
+<?php MessageHelper::logMessage(); ?>
+
+<div class="ad-card">
+    <?php if (empty($listAccAdmin)): ?>
+        <?= ad_empty('fa-user-shield', 'Chưa có quản trị viên', '') ?>
+    <?php else: ?>
+        <div class="ad-table-wrap">
+            <table class="ad-table ad-stack-mobile">
+                <thead>
+                    <tr>
+                        <th>Quản trị viên</th>
+                        <th>Email</th>
+                        <th>Điện thoại</th>
+                        <th>Ngày tạo</th>
+                        <th class="ad-num">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($listAccAdmin as $acc): ?>
+                        <?php
+                        $isMe = (int) $acc['admin_id'] === $currentAdminId;
+                        $initial = mb_strtoupper(mb_substr(trim($acc['full_name']) ?: $acc['username'], 0, 1, 'UTF-8'), 'UTF-8');
+                        ?>
+                        <tr>
+                            <td class="ad-cell-main">
+                                <div class="ad-item">
+                                    <span class="gn-avatar" aria-hidden="true"><?= ad_e($initial) ?></span>
+                                    <div>
+                                        <div class="ad-item-name">
+                                            <?= ad_e($acc['full_name']) ?>
+                                            <?php if ($isMe): ?><span class="ad-badge is-accent no-dot ms-1">Bạn</span><?php endif; ?>
+                                        </div>
+                                        <div class="ad-item-sub">@<?= ad_e($acc['username']) ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Email"><?= ad_e($acc['email']) ?></td>
+                            <td data-label="Điện thoại" class="ad-nowrap"><?= ad_e($acc['phone'] ?: '—') ?></td>
+                            <td data-label="Ngày tạo" class="ad-nowrap"><?= ad_date($acc['created_at']) ?></td>
+                            <td class="ad-cell-actions">
+                                <div class="ad-actions">
+                                    <?php if ($isMe): ?>
+                                        <a href="index.php?controller=profile" class="ad-icon-btn is-view" title="Hồ sơ của bạn" aria-label="Hồ sơ của bạn">
+                                            <i class="fas fa-id-card"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="index.php?controller=accountAdmin&action=deleteAccountAdmin&admin_id=<?= (int) $acc['admin_id'] ?>"
+                                            class="ad-icon-btn is-danger" title="Xóa tài khoản" aria-label="Xóa tài khoản <?= ad_e($acc['username']) ?>"
+                                            data-confirm="Tài khoản @<?= ad_e($acc['username']) ?> sẽ không thể đăng nhập trang quản trị nữa."
+                                            data-confirm-title="Xóa quản trị viên?" data-confirm-variant="danger" data-confirm-ok="Xóa">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+</div>

@@ -10,7 +10,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Đặt hàng thành công - FlowerTown</title>
+    <title>Đặt hàng thành công - Góc Nhỏ Có Hoa</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -211,7 +211,7 @@
         </div>
         
         <h1 class="heading-font">Đặt hàng thành công!</h1>
-        <p class="text-muted px-md-4">Cảm ơn bạn đã tin tưởng FlowerTown. Chúng tôi sẽ chuẩn bị những đóa hoa tươi đẹp nhất để gửi đến bạn.</p>
+        <p class="text-muted px-md-4">Cảm ơn bạn đã tin tưởng Góc Nhỏ Có Hoa. Chúng tôi sẽ chuẩn bị những đóa hoa tươi đẹp nhất để gửi đến bạn.</p>
         
         <div class="order-code-badge">
             <i class="bi bi-tag-fill"></i> Mã đơn: <?= htmlspecialchars($order['order_code']) ?>

@@ -11,6 +11,7 @@ class AccountCustomerController
 
     public function listAccountCustomer()
     {
+        $listAccCustomer = $this->model->getAllAccountCustomer();
         $viewFile = "../../views/admins/accounts/customers/list_account.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }
@@ -30,6 +31,7 @@ class AccountCustomerController
         } else {
             MessageHelper::error("Không tìm thấy id cần xóa");
         }
+        $listAccCustomer = $this->model->getAllAccountCustomer();
         $viewFile = "../../views/admins/accounts/customers/list_account.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }

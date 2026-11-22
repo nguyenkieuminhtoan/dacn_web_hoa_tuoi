@@ -10,6 +10,7 @@ class AccountAdminController
 
     public function listAccountAdmin()
     {
+        $listAccAdmin = $this->model->getAllAccountAdmin();
         $viewFile = "../../views/admins/accounts/admins/list_account.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }

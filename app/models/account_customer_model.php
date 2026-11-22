@@ -12,7 +12,7 @@ class AccountCustomerModel
         $sql = "SELECT * FROM customers";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
-        return $stmt;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function deleteAccountCustomer($customer_id)

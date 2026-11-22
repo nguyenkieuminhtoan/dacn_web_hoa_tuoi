@@ -74,6 +74,8 @@ class PromotionController
                 exit();
             }
         }
+        $listEnumDiscountType = $this->model->getValueDiscountType();
+        $listEnumStatus = $this->model->getValueStatus();
         $viewFile = "../../views/admins/promotions/add_promotion.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }
@@ -156,6 +158,9 @@ class PromotionController
                 exit();
             }
         }
+        $onePromotion = $promotion ?? $this->model->getByIdPromotion($_GET["promotion_id"] ?? 0);
+        $listEnumDiscountType = $this->model->getValueDiscountType();
+        $listEnumStatus = $this->model->getValueStatus();
         $viewFile = "../../views/admins/promotions/update_promotion.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }
@@ -187,6 +192,8 @@ class PromotionController
                 exit;
             }
         }
+        $listProduct = $this->modelProduct->getAllProduct();
+        $listPromotionActive = $this->model->getPromotionActive();
         $viewFile = "../../views/admins/promotions/apply_product_promotion.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }

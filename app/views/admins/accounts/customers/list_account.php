@@ -1,83 +1,76 @@
 <?php
-// code test data
-
-require_once __DIR__ . '/../../../../models/account_customer_model.php';
-require_once __DIR__ . '/../../../../../config/config.php';
-
-
-$accCustomerModel = new AccountCustomerModel();
-$listAccCustomer = $accCustomerModel->getAllAccountCustomer();
-
+/**
+ * Biến từ AccountCustomerController:
+ * @var array $listAccCustomer
+ */
 ?>
-<!DOCTYPE html>
-<html lang="vi">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Danh sách Tài khoản Admin</title>
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .col-password {
-            max-width: 350px;
-            /* giới hạn chiều rộng */
-            word-wrap: break-word;
-            /* tự xuống dòng khi dài */
-            white-space: normal;
-            /* cho phép xuống dòng */
-        }
-    </style>
-</head>
-
-<body class="p-1 m-1">
-    <div class="container">
-        <h2 class="mb-4 text-center fw-bold">Danh sách Tài khoản khách hàng</h2>
-        <?php
-        require_once __DIR__ . '/../../../../../helpers/message_helper.php';
-        MessageHelper::logMessage();
-        ?>
-        <table class="table table-hover table-bordered align-middle text-center">
-            <thead class="table-secondary">
-                <tr>
-                    <th>ID</th>
-                    <th>Tên tài khoản</th>
-                    <th>Email</th>
-                    <th class="col-password">Mật khẩu</th>
-                    <th>Tên quản trị</th>
-                    <th>Số điện thoại</th>
-                    <th>Địa chỉ</th>
-                    <th>Ngày tạo</th>
-                    <th>Ngày cập nhật</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($listAccCustomer as $acc): ?>
-                    <tr>
-                        <td style="font-weight: bold;"><?= $acc['customer_id'] ?></td>
-                        <td><?= $acc['username'] ?></td>
-                        <td><?= $acc['email'] ?></td>
-                        <td class="col-password"><?= $acc['password'] ?></td>
-                        <td><?= $acc['full_name'] ?></td>
-                        <td><?= $acc['phone'] ?></td>
-                        <td><?= $acc['address'] ?></td>
-                        <td><?= $acc['created_at'] ?></td>
-                        <td><?= $acc['updated_at'] ?></td>
-                        <td class="align-middle text-center">
-                            <div class="d-inline-flex justify-content-center align-items-center gap-2">
-                                <a href="index.php?controller=accountCustomer&action=deleteAccountCustomer&customer_id=<?= $acc['customer_id'] ?>"
-                                    onclick="return confirm('Bạn có chắc muốn xóa')"
-                                    class="btn btn-danger btn-sm">
-                                    <i class="fa-solid fa-trash"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="ad-head">
+    <div>
+        <h2 class="ad-head-title">Khách hàng</h2>
+        <p class="ad-head-sub"><?= count($listAccCustomer) ?> tài khoản khách hàng</p>
     </div>
-</body>
+</div>
 
-</html>
+<?php MessageHelper::logMessage(); ?>
+
+<div class="ad-card" data-filter>
+    <div class="ad-toolbar">
+        <div class="ad-search">
+            <i class="fas fa-search"></i>
+            <input type="search" class="form-control" placeholder="Tìm tên, tài khoản, email, số điện thoại..." data-filter-search aria-label="Tìm khách hàng">
+        </div>
+        <span class="ad-toolbar-count" data-filter-count></span>
+    </div>
+
+    <?php if (empty($listAccCustomer)): ?>
+        <?= ad_empty('fa-users', 'Chưa có khách hàng nào', 'Khách đăng ký tài khoản trên cửa hàng sẽ hiện ở đây.') ?>
+    <?php else: ?>
+        <div class="ad-table-wrap">
+            <table class="ad-table ad-stack-mobile">
+                <thead>
+                    <tr>
+                        <th>Khách hàng</th>
+                        <th>Email</th>
+                        <th>Điện thoại</th>
+                        <th>Địa chỉ</th>
+                        <th>Ngày tham gia</th>
+                        <th class="ad-num">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($listAccCustomer as $acc): ?>
+                        <?php $initial = mb_strtoupper(mb_substr(trim($acc['full_name']) ?: $acc['username'], 0, 1, 'UTF-8'), 'UTF-8'); ?>
+                        <tr data-search="<?= ad_e($acc['full_name'] . ' ' . $acc['username'] . ' ' . $acc['email'] . ' ' . $acc['phone']) ?>">
+                            <td class="ad-cell-main">
+                                <div class="ad-item">
+                                    <span class="gn-avatar" aria-hidden="true"><?= ad_e($initial) ?></span>
+                                    <div>
+                                        <div class="ad-item-name"><?= ad_e($acc['full_name']) ?></div>
+                                        <div class="ad-item-sub">@<?= ad_e($acc['username']) ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Email"><a href="mailto:<?= ad_e($acc['email']) ?>" class="text-reset"><?= ad_e($acc['email']) ?></a></td>
+                            <td data-label="Điện thoại" class="ad-nowrap"><?= ad_e($acc['phone'] ?: '—') ?></td>
+                            <td data-label="Địa chỉ"><div class="ad-clamp ad-small"><?= ad_e($acc['address'] ?: '—') ?></div></td>
+                            <td data-label="Ngày tham gia" class="ad-nowrap"><?= ad_date($acc['created_at']) ?></td>
+                            <td class="ad-cell-actions">
+                                <div class="ad-actions">
+                                    <a href="index.php?controller=accountCustomer&action=deleteAccountCustomer&customer_id=<?= (int) $acc['customer_id'] ?>"
+                                        class="ad-icon-btn is-danger" title="Xóa tài khoản" aria-label="Xóa tài khoản <?= ad_e($acc['username']) ?>"
+                                        data-confirm="Tài khoản @<?= ad_e($acc['username']) ?> cùng giỏ hàng, đơn hàng và bình luận của khách sẽ bị xóa vĩnh viễn."
+                                        data-confirm-title="Xóa tài khoản khách hàng?" data-confirm-variant="danger" data-confirm-ok="Xóa">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div data-filter-empty class="ad-no-result">
+            <?= ad_empty('fa-magnifying-glass', 'Không tìm thấy khách hàng phù hợp', 'Thử tên, email hoặc số điện thoại khác.') ?>
+        </div>
+    <?php endif; ?>
+</div>

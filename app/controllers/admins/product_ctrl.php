@@ -49,6 +49,8 @@ class ProductController
                 MessageHelper::error("Thêm sản phẩm thất bại !!!");
             }
         }
+        $listCategory = (new CategoryModel())->getAllCategory();
+        $listEnumStatus = $this->model->getValueEnumStatus();
         $viewFile = "../../views/admins/products/add_product.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }
@@ -73,8 +75,13 @@ class ProductController
     public function updateProduct()
     {
         $product_id = $_GET['product_id'] ?? $_POST['product_id'] ?? null;
+        if (!$product_id) {
+            MessageHelper::error("Không tìm thấy sản phẩm cần cập nhật");
+            header("Location: index.php?controller=product&action=listProduct");
+            exit;
+        }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product_id) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $product_name = $_POST['product_name'];
             $price = $_POST['price'];
             $description = $_POST['description'];
@@ -101,9 +108,16 @@ class ProductController
             } else {
                 MessageHelper::error("Cập nhật sản phẩm thất bại !!!");
             }
-        } else {
-            echo "Không tìm thấy ID cập nhật";
         }
+
+        $oneProduct = $this->model->getByIdProduct($product_id);
+        if (!$oneProduct) {
+            MessageHelper::error("Sản phẩm không tồn tại hoặc đã bị xóa");
+            header("Location: index.php?controller=product&action=listProduct");
+            exit;
+        }
+        $listCategory = (new CategoryModel())->getAllCategory();
+        $listEnumStatus = $this->model->getValueEnumStatus();
 
         $viewFile = "../../views/admins/products/update_product.php";
         include __DIR__ . '/../../views/admins/dashboard.php';

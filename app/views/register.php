@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Đăng ký - Bloom & Blossom</title>
+    <title>Đăng ký - Góc Nhỏ Có Hoa</title>
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -151,7 +151,7 @@
 
         <div class="text-center mb-4">
             <h2 class="brand-title">Đăng ký thành viên</h2>
-            <p class="text-muted small">Tham gia cùng Bloom & Blossom để nhận nhiều ưu đãi</p>
+            <p class="text-muted small">Tham gia cùng Góc Nhỏ Có Hoa để nhận nhiều ưu đãi</p>
             <?php
             require_once __DIR__ . '/../../helpers/message_helper.php';
             MessageHelper::logMessage();

@@ -1,6 +1,13 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../../config/config.php';
+
+// Chặn truy cập khi chưa đăng nhập admin
+if (empty($_SESSION['admin'])) {
+    header("Location: ../../../index.php?router=login");
+    exit;
+}
+
 if (isset($_GET['controller'])) {
     $controllerURL = $_GET['controller'];
 } else {
@@ -35,6 +42,9 @@ switch ($controllerURL) {
         break;
     case 'promotion':
         $controllerPath = "../../controllers/admins/promotion_ctrl.php";
+        break;
+    case 'profile':
+        $controllerPath = "../../controllers/admins/profile_ctrl.php";
         break;
     default:
         break;

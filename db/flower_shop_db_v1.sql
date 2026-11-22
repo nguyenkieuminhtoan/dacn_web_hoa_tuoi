@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS `admins` (
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `admins`
+-- Mật khẩu của tất cả tài khoản: 1
+--
+
+INSERT INTO `admins` (`admin_id`, `username`, `email`, `password`, `full_name`, `phone`) VALUES
+(1, 'admin', 'admin@flowershop.vn', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Quản Trị Viên', '0901000001'),
+(2, 'quanly', 'quanly@flowershop.vn', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Nguyễn Minh Quân', '0901000002');
+
 -- --------------------------------------------------------
 
 --
@@ -120,6 +129,16 @@ CREATE TABLE IF NOT EXISTS `customers` (
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `customers`
+-- Mật khẩu của tất cả tài khoản: 1
+--
+
+INSERT INTO `customers` (`customer_id`, `username`, `email`, `password`, `full_name`, `phone`, `address`) VALUES
+(1, 'user1', 'user1@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Nguyễn Văn An', '0912345671', '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh'),
+(2, 'user2', 'user2@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Trần Thị Bình', '0912345672', '45 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh'),
+(3, 'user3', 'user3@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Lê Văn Cường', '0912345673', '88 Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội');
 
 -- --------------------------------------------------------
 

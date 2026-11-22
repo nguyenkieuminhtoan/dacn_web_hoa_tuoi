@@ -68,6 +68,12 @@ class CategoryController
                 MessageHelper::error("Cập nhật thất bại !!!");
             }
         }
+        $oneCategory = $this->model->getByIdCategory($category_id);
+        if (!$oneCategory) {
+            MessageHelper::error("Danh mục không tồn tại hoặc đã bị xóa");
+            header("Location: index.php?controller=category&action=listCategory");
+            exit;
+        }
         $viewFile = "../../views/admins/categories/update_category.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }

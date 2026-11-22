@@ -1,152 +1,95 @@
 <?php
-// code test data
-
+/**
+ * Biến từ PromotionController::listPromotion():
+ * @var array $listPromotion
+ * @var int   $page
+ * @var int   $totalPages
+ * @var int   $totalPromotions
+ */
 ?>
-<!DOCTYPE html>
-<html lang="vi">
+<div class="ad-head">
+    <div>
+        <h2 class="ad-head-title">Mã khuyến mãi</h2>
+        <p class="ad-head-sub"><?= (int) $totalPromotions ?> mã khuyến mãi</p>
+    </div>
+    <div class="ad-head-actions">
+        <a class="btn ad-btn-primary" href="index.php?controller=promotion&action=addPromotion">
+            <i class="fas fa-plus"></i> Tạo mã khuyến mãi
+        </a>
+    </div>
+</div>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Danh sách sản phẩm</title>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<?php MessageHelper::logMessage(); ?>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-</head>
-
-<body class="p-1 m-1">
-    <div class="container">
-        <h2 class="mb-4 text-center fw-bold">Danh sách Code khuyến mãi</h2>
-        <?php
-        require_once __DIR__ . '/../../../../helpers/message_helper.php';
-        MessageHelper::logMessage();
-        ?>
-        <div class="mb-3">
-            <a class="btn btn-success me-2" href="index.php?controller=promotion&action=addPromotion">
-                + Thêm mới khuyến mãi
-            </a>
+<div class="ad-card" data-filter>
+    <div class="ad-toolbar">
+        <div class="ad-search">
+            <i class="fas fa-search"></i>
+            <input type="search" class="form-control" placeholder="Tìm mã hoặc tên chương trình..." data-filter-search aria-label="Tìm mã khuyến mãi">
         </div>
-
-        <table class="table table-hover table-bordered align-middle text-center">
-            <thead class="table-secondary">
-                <tr>
-                    <th>ID</th>
-                    <th>Code khuyến mãi</th>
-                    <th>Tên khuyến mãi</th>
-                    <th>Mô tả</th>
-                    <!-- <th>Loại</th> -->
-                    <th>Giá trị</th>
-                    <th>Thời gian áp dụng</th>
-                    <th>Trạng thái</th>
-                    <!-- <th>Ngày tạo</th>
-                    <th>Ngày cập nhật</th> -->
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($listPromotion as $p): ?>
-                    <tr>
-                        <td style="font-weight: bold;"><?= $p['promotion_id'] ?></td>
-                        <td><?= $p['promotion_code'] ?></td>
-                        <td><?= $p['promotion_name'] ?></td>
-                        <td><?= $p['description'] ?></td>
-                        <!-- <td>
-                            <?php
-                            switch ($p['discount_type']) {
-                                case 'percentage':
-                                    echo "Phần trăm (%)";
-                                    break;
-                                case 'fixed_amount':
-                                    echo "Giá trị cố định";
-                                    break;
-                                default:
-                                    echo "Lỗi";
-                                    break;
-                            }
-                            ?>
-                        </td> -->
-                        <td>
-                            <?php
-                            switch ($p['discount_type']) {
-                                case 'fixed_amount':
-                                    echo 'Giảm ' . number_format($p['discount_value'], 0, '.', '.') . 'đ';
-                                    break;
-                                case 'percentage':
-                                    echo 'Giảm ' . number_format($p['discount_value'], 0, '.', '.') . '%';
-                                    break;
-                                default:
-                                    echo 'Giảm ' . number_format($p['discount_value'], 0, '.', '.');
-                                    break;
-                            }
-                            ?>
-                        </td>
-                        <td>
-                            <ul class="list-group text-center">
-                                <li class="list-group-item list-group-item-success">
-                                    Từ <?= date('d/m/Y', strtotime($p['start_date'])) ?>
-                                </li>
-                                <li class="list-group-item list-group-item-danger">
-                                    Hết <?= date('d/m/Y', strtotime($p['end_date'])) ?>
-                                </li>
-                            </ul>
-                        </td>
-                        <td>
-                            <?php
-                            switch ($p['status']) {
-                                case 'active':
-                                    echo '<div class="alert alert-success p-1 m-0 text-center">Đang hoạt động</div>';
-                                    break;
-                                case 'inactive':
-                                    echo '<div class="alert alert-warning p-1 m-0 text-center">Tạm ngưng</div>';
-                                    break;
-                                case 'expired':
-                                    echo '<div class="alert alert-danger p-1 m-0 text-center">Hết hạn</div>';
-                                    break;
-                                default:
-                                    echo '<div class="alert alert-secondary p-1 m-0 text-center">Lỗi</div>';
-                                    break;
-                            }
-                            ?>
-                        </td>
-    
-                        <td class="align-middle text-center">
-                            <div class="d-inline-flex justify-content-center align-items-center gap-2">
-                                <a href="index.php?controller=promotion&action=updatePromotion&promotion_id=<?= $p['promotion_id'] ?>"
-                                    onclick="return confirm('Bạn có chắc muốn cập nhật')"
-                                    class="btn btn-warning btn-sm">
-                                    <i class="fa-solid fa-pen-to-square"></i></a>|
-                                <a href="index.php?controller=promotion&action=deletePromotion&promotion_id=<?= $p['promotion_id'] ?>"
-                                    onclick="return confirm('Bạn có chắc muốn xóa')"
-                                    class="btn btn-danger btn-sm">
-                                    <i class="fa-solid fa-trash"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        <div class="d-flex justify-content-center mt-3">
-            <nav>
-                <ul class="pagination pagination-sm2">
-                    <li class="page-item <?= $page == 1 ? 'disabled' : '' ?>">
-                        <a class="page-link" href="index.php?controller=promotion&action=listPromotion&page=<?= $page - 1 ?>">«</a>
-                    </li>
-                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                            <a class="page-link" href="index.php?controller=promotion&action=listPromotion&page=<?= $i ?>">
-                                <?= $i ?>
-                            </a>
-                        </li>
-                    <?php endfor; ?>
-                    <li class="page-item <?= $page == $totalPages ? 'disabled' : '' ?>">
-                        <a class="page-link" href="index.php?controller=promotion&action=listPromotion&page=<?= $page + 1 ?>">»</a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-
+        <select class="form-select" data-filter-status aria-label="Lọc theo trạng thái">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="inactive">Tạm ngưng</option>
+            <option value="expired">Hết hạn</option>
+        </select>
+        <span class="ad-toolbar-count" data-filter-count></span>
     </div>
 
-</body>
-
-</html>
+    <?php if (empty($listPromotion)): ?>
+        <?= ad_empty('fa-ticket', 'Chưa có mã khuyến mãi nào', 'Tạo mã đầu tiên để bắt đầu giảm giá cho sản phẩm.',
+            '<a class="btn ad-btn-primary" href="index.php?controller=promotion&action=addPromotion"><i class="fas fa-plus"></i> Tạo mã khuyến mãi</a>') ?>
+    <?php else: ?>
+        <div class="ad-table-wrap">
+            <table class="ad-table ad-stack-mobile">
+                <thead>
+                    <tr>
+                        <th>Chương trình</th>
+                        <th>Mức giảm</th>
+                        <th>Thời gian</th>
+                        <th>Trạng thái</th>
+                        <th class="ad-num">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($listPromotion as $p): ?>
+                        <tr data-search="<?= ad_e($p['promotion_code'] . ' ' . $p['promotion_name']) ?>" data-status="<?= ad_e($p['status']) ?>">
+                            <td class="ad-cell-main">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="ad-code"><?= ad_e($p['promotion_code']) ?></span>
+                                    <span class="ad-item-name"><?= ad_e($p['promotion_name']) ?></span>
+                                </div>
+                                <?php if (!empty($p['description'])): ?>
+                                    <div class="ad-item-sub ad-clamp mt-1"><?= ad_e($p['description']) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td data-label="Mức giảm" class="ad-nowrap ad-strong"><?= ad_e(ad_discount($p['discount_type'], $p['discount_value'])) ?></td>
+                            <td data-label="Thời gian" class="ad-nowrap ad-small">
+                                <?= ad_date($p['start_date']) ?> <span class="ad-muted">→</span> <?= ad_date($p['end_date']) ?>
+                            </td>
+                            <td data-label="Trạng thái"><?= ad_promo_status($p['status']) ?></td>
+                            <td class="ad-cell-actions">
+                                <div class="ad-actions">
+                                    <a href="index.php?controller=promotion&action=updatePromotion&promotion_id=<?= (int) $p['promotion_id'] ?>"
+                                        class="ad-icon-btn is-edit" title="Sửa" aria-label="Sửa mã <?= ad_e($p['promotion_code']) ?>">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    <a href="index.php?controller=promotion&action=deletePromotion&promotion_id=<?= (int) $p['promotion_id'] ?>"
+                                        class="ad-icon-btn is-danger" title="Xóa" aria-label="Xóa mã <?= ad_e($p['promotion_code']) ?>"
+                                        data-confirm="Mã <?= ad_e($p['promotion_code']) ?> sẽ bị xóa và gỡ khỏi mọi sản phẩm đang áp dụng."
+                                        data-confirm-title="Xóa mã khuyến mãi?" data-confirm-variant="danger" data-confirm-ok="Xóa">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div data-filter-empty class="ad-no-result">
+            <?= ad_empty('fa-magnifying-glass', 'Không tìm thấy mã phù hợp', 'Thử từ khóa khác hoặc bỏ bộ lọc.') ?>
+        </div>
+        <?= ad_pagination($page, $totalPages, 'index.php?controller=promotion&action=listPromotion', $totalPromotions) ?>
+    <?php endif; ?>
+</div>
