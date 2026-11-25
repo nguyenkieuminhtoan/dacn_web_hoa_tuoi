@@ -57,7 +57,7 @@
                                     <span class="ad-choice-title d-block"><?= ad_e($pr['promotion_name']) ?></span>
                                     <span class="ad-code mt-1 d-inline-block"><?= ad_e($pr['promotion_code']) ?></span>
                                     <?php if (!empty($pr['description'])): ?>
-                                        <span class="ad-choice-sub d-block"><?= ad_e($pr['description']) ?></span>
+                                        <span class="ad-choice-sub ad-pre-line d-block"><?= ad_e($pr['description']) ?></span>
                                     <?php endif; ?>
                                 </span>
                             </label>

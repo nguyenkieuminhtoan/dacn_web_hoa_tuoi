@@ -28,7 +28,7 @@ class LoginController
                     header("Location: /app/views/admins/index.php?controller=dashboard");
                     exit;
                 } else {
-                    MessageHelper::error("Sai tài khoản hoặc mặt khẩu !!!");
+                    MessageHelper::error("Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại.");
                 }
             }
 
@@ -41,7 +41,7 @@ class LoginController
                     header("Location: index.php?router=customers&controller=index&action=index");
                     exit;
                 } else {
-                    MessageHelper::error("Sai tài khoản hoặc mặt khẩu !!!");
+                    MessageHelper::error("Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại.");
                 }
             }
         }

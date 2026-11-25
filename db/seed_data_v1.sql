@@ -1,15 +1,15 @@
 -- ============================================================
 -- SEED DATA cho database `flower_shop_db`
 -- ------------------------------------------------------------
--- Chạy SAU file flower_shop_db_v1.sql (file đó đã tạo bảng và
--- các tài khoản admins / customers, mật khẩu đều là: 1)
+-- Chạy SAU file flower_shop_db_v1.sql (file đó chỉ tạo bảng).
 --
+-- Tài khoản đăng nhập (mật khẩu đều là: 1)
 --   admins    : admin (1), quanly (2)
 --   customers : user1 (1), user2 (2), user3 (3)
 --
 -- Ảnh sản phẩm lấy từ thư mục uploads/ (chỉ lưu tên file).
--- File này có thể chạy lại nhiều lần (sẽ xóa dữ liệu cũ của
--- các bảng bên dưới, KHÔNG đụng tới admins / customers).
+-- File này có thể chạy lại nhiều lần: xóa dữ liệu cũ của TẤT CẢ
+-- các bảng (kể cả tài khoản) rồi nạp lại từ đầu.
 -- ============================================================
 
 SET NAMES utf8mb4;
@@ -23,7 +23,11 @@ DELETE FROM `product_promotions`;
 DELETE FROM `promotions`;
 DELETE FROM `products`;
 DELETE FROM `categories`;
+DELETE FROM `customers`;
+DELETE FROM `admins`;
 
+ALTER TABLE `admins` AUTO_INCREMENT = 1;
+ALTER TABLE `customers` AUTO_INCREMENT = 1;
 ALTER TABLE `comments` AUTO_INCREMENT = 1;
 ALTER TABLE `order_details` AUTO_INCREMENT = 1;
 ALTER TABLE `orders` AUTO_INCREMENT = 1;
@@ -36,6 +40,21 @@ ALTER TABLE `categories` AUTO_INCREMENT = 1;
 START TRANSACTION;
 
 -- ------------------------------------------------------------
+-- admins (mật khẩu: 1)
+-- ------------------------------------------------------------
+INSERT INTO `admins` (`admin_id`, `username`, `email`, `password`, `full_name`, `phone`) VALUES
+(1, 'admin', 'admin@flowershop.vn', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Quản Trị Viên', '0901000001'),
+(2, 'quanly', 'quanly@flowershop.vn', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Nguyễn Minh Quân', '0901000002');
+
+-- ------------------------------------------------------------
+-- customers (mật khẩu: 1)
+-- ------------------------------------------------------------
+INSERT INTO `customers` (`customer_id`, `username`, `email`, `password`, `full_name`, `phone`, `address`) VALUES
+(1, 'user1', 'user1@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Nguyễn Văn An', '0912345671', '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh'),
+(2, 'user2', 'user2@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Trần Thị Bình', '0912345672', '45 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh'),
+(3, 'user3', 'user3@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Lê Văn Cường', '0912345673', '88 Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội');
+
+-- ------------------------------------------------------------
 -- categories
 -- ------------------------------------------------------------
 INSERT INTO `categories` (`category_id`, `category_name`, `description`) VALUES
@@ -44,7 +63,8 @@ INSERT INTO `categories` (`category_id`, `category_name`, `description`) VALUES
 (3, 'Hoa Hướng Dương', 'Hoa hướng dương mang ý nghĩa may mắn, năng lượng tích cực và niềm tin.'),
 (4, 'Hoa Tulip', 'Tulip nhập khẩu sang trọng, tinh tế, phù hợp làm quà tặng cao cấp.'),
 (5, 'Hộp Hoa Mica', 'Hoa được cắm trong hộp mica hiện đại, giữ form đẹp và bền lâu.'),
-(6, 'Hoa Chúc Mừng', 'Hoa chúc mừng khai trương, tốt nghiệp, thăng chức và các dịp đặc biệt.');
+(6, 'Hoa Chúc Mừng', 'Hoa chúc mừng khai trương, tốt nghiệp, thăng chức và các dịp đặc biệt.'),
+(7, 'Hoa Tốt Nghiệp', 'Những bó hoa rạng rỡ chúc mừng tân cử nhân trong ngày lễ tốt nghiệp.');
 
 -- ------------------------------------------------------------
 -- products (image_url = tên file trong thư mục uploads/)
@@ -62,7 +82,13 @@ INSERT INTO `products` (`product_id`, `product_name`, `price`, `description`, `i
 (10, 'Bó Hoa Tulip Pink Vintage', 850000.00, 'Tulip hồng phong cách vintage, gói giấy kraft cổ điển, phù hợp tặng người yêu hoặc mẹ.', '1777394183_Bo-Hoa-Tuoi-Tulip-Pink-Tulip-Vintage-Vuon-Hoa-Tuoi-2.jpg', 14, 'available', 4),
 (11, 'Hộp Hoa Mica Radiant Emotions', 690000.00, 'Hộp hoa mica trong suốt với hồng, cẩm chướng và hoa lá phụ, giữ form đẹp, dễ trưng bày.', '1777394965_Mica-FlowerBox-Radiant-Emotions-2-768x1024.jpg', 16, 'available', 5),
 (12, 'Bó Hoa Tươi Flower B', 420000.00, 'Bó hoa tươi phối màu trẻ trung, gói giấy hiện đại, thích hợp chúc mừng tốt nghiệp, khai trương.', '1777524440_Bo-Hoa-Tuoi-Flower-B-2-667x800.jpg', 0, 'out_of_stock', 6),
-(13, 'Bó Hoa Hồng Shimmer Hạnh Phúc', 560000.00, 'Hồng shimmer lấp lánh mang thông điệp hạnh phúc, rạng rỡ — lựa chọn tuyệt vời cho ngày sinh nhật.', '1777525246_Bo-Hoa-Hong-Shimmer-Hanh-Phuc-2-768x1024.jpg', 22, 'available', 1);
+(13, 'Bó Hoa Hồng Shimmer Hạnh Phúc', 560000.00, 'Hồng shimmer lấp lánh mang thông điệp hạnh phúc, rạng rỡ — lựa chọn tuyệt vời cho ngày sinh nhật.', '1777525246_Bo-Hoa-Hong-Shimmer-Hanh-Phuc-2-768x1024.jpg', 22, 'available', 1),
+-- Hoa tốt nghiệp (id 51..55)
+(51, 'Victor Blue Delphinium', 470000.00, 'Bó Hoa Hồng Victor Delphinium Xanh Dương Tốt Nghiệp Victor Blue Delphinium là sự kết hợp đầy cảm hứng giữa nét thanh lịch hiện đại và tinh thần tươi trẻ của ngày ra trường. Không chọn những gam màu quá rực rỡ, bó hoa được sử dụng hồng Victor ghi điểm ngay từ ánh nhìn đầu tiên nhờ bảng màu vàng kem xanh dương hài hòa, mang lại cảm giác sáng bừng, sang trọng nhưng vẫn cực kỳ gần gũi và dễ thương.', '1795408098_Bo-Hoa-Hong-Victor-Delphinium-Xanh-Duong-Tot-Nghiep-Victor-Blue-Delphinium.jpg', 20, 'available', 7),
+(52, 'Success Story', 575000.00, 'Hướng dương phối hồng kem và cẩm chướng, ghi dấu câu chuyện thành công đầu tiên.\nThành phần: Hướng dương, hồng kem, cẩm chướng hồng, cúc tana.', '1795407925_Hoa-Tot-Nghiep-Huong-Duong-Hong-Xinh.jpg', 16, 'available', 7),
+(53, 'Sunny Moment', 590000.00, 'Sắc vàng và cam pastel tươi tắn, lưu lại khoảnh khắc rạng rỡ trong ngày ra trường.\nThành phần: Hướng dương, đồng tiền hồng, đồng tiền cam pastel, cúc tana.', '1795407893_Sunny-Moment-png.jpg', 14, 'available', 7),
+(54, 'Bó Hoa Hướng Dương Ngày Mới Tinh Khôi', 600000.00, 'Bó Hoa Hướng Dương Ngày Mới Tinh Khôi mang sắc vàng ấm áp của nắng sớm. Ba bông hướng dương với cánh vàng cam và nhụy nâu đậm được đặt ở những độ cao khác nhau, tạo điểm nhấn tự nhiên. Hoa hồng trắng và những cụm hoa trắng nhỏ đan xen quanh hướng dương, điểm thêm vài nhánh hoa xanh lam dịu mắt.', '1795407846_Bo-Hoa-Huong-Duong-Ngay-Moi-Tinh-Khoi.jpg', 12, 'available', 7),
+(55, 'Bó Hoa Tốt Nghiệp Vang Danh', 1200000.00, 'Có những ngày chúng mình nhớ mãi không quên. Ngày cầm tấm bằng trên tay, bước ra khỏi giảng đường lần cuối, ngoảnh lại nhìn những năm tháng đã qua với đủ vui buồn, mệt mỏi và cả những đêm thức trắng. Và trong khoảnh khắc đó, điều ý nghĩa nhất không phải là tấm bằng, mà là người bạn thân đứng ngay bên cạnh, trao cho bạn một bó hoa và nói: “Tớ tự hào về cậu lắm.” Bó Hoa Tốt Nghiệp Vang Danh Cử Nhân Thạc Sỹ được chúng mình tại Vườn Hoa Tươi tạo ra để mang đúng cảm xúc đó. Rực rỡ, ấm áp và chân thành.', '1795407799_Bo-Hoa-Tot-Nghiep-Vang-Danh.jpg', 7, 'available', 7);
 
 -- ------------------------------------------------------------
 -- promotions

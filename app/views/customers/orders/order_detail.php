@@ -1,301 +1,534 @@
-<?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
-<!DOCTYPE html>
 <?php
 /**
+ * Chi tiết đơn hàng. Biến từ OrderController::viewDetail():
  * @var array $order
  * @var array $orderDetails
  */
+$e = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+$money = fn($v) => number_format((float) $v, 0, ',', '.') . 'đ';
+
+$status = $order['order_status'];
+$isCancelled = $status === 'cancelled';
+$canCancel = in_array($status, OrderHelper::CUSTOMER_CANCELLABLE, true);
+
+// Thanh tiến trình: vị trí bước hiện tại
+$steps = [
+    'pending'   => ['Đặt hàng', 'bi-receipt'],
+    'confirmed' => ['Xác nhận', 'bi-check2-circle'],
+    'shipping'  => ['Đang giao', 'bi-truck'],
+    'completed' => ['Hoàn thành', 'bi-flower1'],
+];
+$stepKeys = array_keys($steps);
+$currentStep = array_search($status, $stepKeys, true);
+
+$itemsTotal = array_sum(array_column($orderDetails, 'subtotal'));
+$itemsQty = array_sum(array_column($orderDetails, 'quantity'));
+$paymentStatus = $order['payment_status'] ?? 'unpaid';
+$payClass = ['paid' => 'os-completed', 'refunded' => 'os-confirmed'][$paymentStatus] ?? 'os-pending';
+$listUrl = 'index.php?router=customers&controller=order&action=listOrders';
 ?>
-<html lang="vi">
+<style>
+    .od-page {
+        max-width: 1100px;
+        padding-top: 1.5rem;
+    }
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Chi tiết đơn hàng - Góc Nhỏ Có Hoa</title>
+    .od-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: .88rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-decoration: none;
+        margin-bottom: .75rem;
+    }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    .od-back:hover {
+        color: var(--primary-color);
+    }
 
-    <style>
-        :root {
-            --primary-color: #e91e63;
-            --primary-gradient: linear-gradient(135deg, #e91e63, #c2185b);
-            --secondary-color: #C2185B;
-            --accent-color: #F06292;
-            --bg-color: #FFF5F7;
-            --card-bg: #ffffff;
-            --text-main: #2d2a24;
-            --text-muted: #6b5a4c;
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --radius-lg: 24px;
-            --radius-md: 16px;
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-            --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.06);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .od-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 1.25rem;
+    }
+
+    .od-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -.5px;
+        color: #3a2c23;
+        margin: 0;
+    }
+
+    .od-date {
+        font-size: .88rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    .od-card {
+        background: var(--card-bg);
+        border: 1px solid #f3e9e2;
+        border-radius: 20px;
+        box-shadow: var(--shadow-sm);
+        padding: 1.4rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Thẻ cuối mỗi cột: để khoảng cách của .row lo (tránh hở gấp đôi khi xếp dọc) */
+    .od-col > .od-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .od-card-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #3a2c23;
+        margin: 0 0 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .od-card-title i {
+        color: var(--primary-color);
+    }
+
+    /* ---------- Tiến trình ---------- */
+    .od-steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .od-step {
+        position: relative;
+        text-align: center;
+        font-size: .8rem;
+        font-weight: 600;
+        color: #b3a196;
+    }
+
+    /* đường nối giữa các bước */
+    .od-step:not(:first-child)::before {
+        content: "";
+        position: absolute;
+        top: 19px;
+        right: 50%;
+        width: 100%;
+        height: 3px;
+        background: #f0e4dd;
+        z-index: 0;
+    }
+
+    .od-step.done:not(:first-child)::before,
+    .od-step.current:not(:first-child)::before {
+        background: var(--primary-color);
+    }
+
+    .od-dot {
+        position: relative;
+        z-index: 1;
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 6px;
+        border-radius: 50%;
+        background: #f6eee9;
+        color: #b3a196;
+        display: grid;
+        place-items: center;
+        font-size: 1.1rem;
+        border: 3px solid #fff;
+    }
+
+    .od-step.done .od-dot {
+        background: #fde8ef;
+        color: var(--primary-color);
+    }
+
+    .od-step.done,
+    .od-step.current {
+        color: var(--text-main);
+    }
+
+    .od-step.current .od-dot {
+        background: var(--primary-color);
+        color: #fff;
+        box-shadow: 0 6px 16px rgba(233, 30, 99, .3);
+    }
+
+    .od-cancelled {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #fdecec;
+        color: #b42318;
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-size: .9rem;
+    }
+
+    .od-cancelled i {
+        font-size: 1.4rem;
+    }
+
+    /* ---------- Sản phẩm ---------- */
+    .od-item {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        padding: .85rem 0;
+        border-bottom: 1px solid #f6eee9;
+    }
+
+    .od-item:first-child {
+        padding-top: 0;
+    }
+
+    .od-item:last-child {
+        border-bottom: 0;
+    }
+
+    .od-item img {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: 12px;
+        background: #faf5f0;
+        display: block;
+    }
+
+    .od-item-name {
+        display: block;
+        font-weight: 700;
+        font-size: .95rem;
+        color: var(--text-main);
+        text-decoration: none;
+        line-height: 1.35;
+    }
+
+    a.od-item-name:hover {
+        color: var(--primary-color);
+    }
+
+    .od-item-unit {
+        font-size: .8rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    .od-item-sub {
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .od-sum {
+        border-top: 1px dashed #ead8cf;
+        margin-top: .5rem;
+        padding-top: .9rem;
+    }
+
+    .od-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: .92rem;
+        color: var(--text-muted);
+        margin-bottom: .5rem;
+    }
+
+    .od-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--text-main);
+        margin-top: .6rem;
+    }
+
+    .od-total span:last-child {
+        color: var(--primary-color);
+    }
+
+    /* ---------- Thông tin bên phải ---------- */
+    .od-info dt {
+        font-size: .75rem;
+        font-weight: 700;
+        color: #a08b7d;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        margin-bottom: 2px;
+    }
+
+    .od-info dd {
+        font-size: .93rem;
+        color: var(--text-main);
+        margin-bottom: .9rem;
+    }
+
+    .od-info dd:last-child {
+        margin-bottom: 0;
+    }
+
+    .od-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .od-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: .8rem;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: .92rem;
+        text-decoration: none;
+        border: 1.5px solid transparent;
+        transition: background .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .od-btn-primary {
+        background: var(--primary-gradient);
+        color: #fff;
+    }
+
+    .od-btn-primary:hover {
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(233, 30, 99, .25);
+    }
+
+    .od-btn-danger {
+        background: #fff;
+        color: #c62828;
+        border-color: #f5c2c2;
+    }
+
+    .od-btn-danger:hover {
+        background: #c62828;
+        color: #fff;
+        border-color: #c62828;
+    }
+
+    .od-hint {
+        font-size: .78rem;
+        color: var(--text-muted);
+        text-align: center;
+        margin: 0;
+    }
+
+    /* Nhãn trạng thái */
+    .os-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: .8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .os-badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .os-pending { background: #fff8e1; color: #b45309; }
+    .os-confirmed { background: #e3f2fd; color: #1565c0; }
+    .os-shipping { background: #f3e5f5; color: #7b1fa2; }
+    .os-completed { background: #e8f5e9; color: #2e7d32; }
+    .os-cancelled { background: #fdecec; color: #c62828; }
+
+    .sticky-lg {
+        position: sticky;
+        top: calc(var(--sh-header-h) + 20px);
+    }
+
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    .animate-fade-up {
+        animation: fadeUp .3s cubic-bezier(.2, 0, 0, 1) both;
+    }
+
+    @media (max-width: 991.98px) {
+        .sticky-lg {
+            position: static;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .od-page {
+            padding-top: 1rem;
         }
 
-        .header-icons {
-            gap: 1.2rem;
+        .od-title {
+            font-size: 1.3rem;
         }
 
-        .header-icons a {
-            color: var(--text-main);
-            font-size: 1.4rem;
-            transition: var(--transition);
-            position: relative;
-            display: flex;
-            align-items: center;
-            text-decoration: none;
+        .od-card {
+            padding: 1.1rem;
+            border-radius: 18px;
+            margin-bottom: 1rem;
         }
 
-        .header-icons a:hover {
-            color: var(--accent-color);
-            transform: translateY(-2px);
+        .od-dot {
+            width: 34px;
+            height: 34px;
+            font-size: .95rem;
         }
 
-        .cart-badge {
-            position: absolute;
-            top: -5px;
-            right: -8px;
-            background: var(--accent-color);
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 0.65rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            border: 2px solid white;
+        .od-step:not(:first-child)::before {
+            top: 16px;
         }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            line-height: 1.6;
+        .od-step {
+            font-size: .7rem;
         }
 
-        .heading-font {
-            font-family: 'Playfair Display', serif;
+        .od-item {
+            grid-template-columns: 56px minmax(0, 1fr) auto;
+            gap: 12px;
         }
 
-        .header {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 0.8rem 0;
-            position: sticky;
-            top: 0;
-            z-index: 1030;
+        .od-item img {
+            width: 56px;
+            height: 56px;
         }
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
+        .od-item-name {
+            font-size: .88rem;
         }
+    }
+</style>
 
-        .logo i {
-            -webkit-text-fill-color: var(--secondary-color);
-            font-size: 1.8rem;
-        }
+<div class="container od-page mb-5">
+    <a href="<?= $listUrl ?>" class="od-back" data-nav-back><i class="bi bi-arrow-left"></i> Đơn hàng của tôi</a>
 
-        .detail-card {
-            background: var(--card-bg);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.02);
-            margin-bottom: 2rem;
-        }
+    <div class="od-head animate-fade-up">
+        <div>
+            <h1 class="od-title">Đơn hàng <?= $e($order['order_code']) ?></h1>
+            <div class="od-date">Đặt lúc <?= date('H:i · d/m/Y', strtotime($order['order_date'])) ?></div>
+        </div>
+        <span class="os-badge os-<?= $e($status) ?>"><?= $e(OrderHelper::statusLabel($status)) ?></span>
+    </div>
 
-        .product-item {
-            display: flex;
-            gap: 20px;
-            padding: 1.5rem 0;
-            border-bottom: 1px solid #f3e9e2;
-        }
-
-        .product-item:last-child {
-            border-bottom: none;
-        }
-
-        .product-img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 12px;
-        }
-
-        .status-badge {
-            padding: 6px 16px;
-            border-radius: 50px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .status-pending { background: #fff8e1; color: #f57f17; }
-        .status-confirmed { background: #e3f2fd; color: #1976d2; }
-        .status-shipping { background: #f3e5f5; color: #7b1fa2; }
-        .status-completed { background: #e8f5e9; color: #2e7d32; }
-        .status-cancelled { background: #fce8e8; color: #c62828; }
-
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-fade-up {
-            animation: fadeUp 0.6s cubic-bezier(0.2, 0, 0, 1) forwards;
-        }
-    </style>
-</head>
-
-<body>
-
-    <header class="header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-6">
-                    <a href="index.php?router=customers" class="logo">
-                        <i class="bi bi-flower2"></i> Góc Nhỏ Có Hoa
-                    </a>
-                </div>
-                <div class="col-6">
-                    <div class="header-icons d-flex justify-content-end align-items-center">
-                        <a href="index.php?router=customers" title="Trang chủ"><i class="bi bi-house-door"></i></a>
-                        <a href="index.php?router=customers&controller=order&action=listOrders" title="Đơn hàng của tôi"><i class="bi bi-receipt"></i></a>
-                        <?php
-                        $cartCount = 0;
-                        if (isset($_SESSION['customer'])) {
-                            require_once __DIR__ . '/../../../models/cart_model.php';
-                            $cartModel = new CartModel();
-                            $cartCount = $cartModel->getCartCount($_SESSION['customer']['customer_id']);
-                        }
-                        ?>
-                        <a href="index.php?router=customers&controller=cart&action=listCart">
-                            <i class="bi bi-bag"></i>
-                            <span class="cart-badge"><?= $cartCount ?></span>
-                        </a>
-                        <?php if (isset($_SESSION['customer'])): ?>
-                            <a href="index.php?router=logout" title="Đăng xuất"><i class="bi bi-box-arrow-right"></i></a>
-                        <?php endif; ?>
+    <div class="row g-4">
+        <div class="col-lg-8 od-col">
+            <!-- Tiến trình đơn -->
+            <div class="od-card animate-fade-up">
+                <?php if ($isCancelled): ?>
+                    <div class="od-cancelled" role="status">
+                        <i class="bi bi-x-circle-fill"></i>
+                        <div><strong>Đơn hàng đã bị hủy.</strong> Nếu cần hỗ trợ, vui lòng liên hệ cửa hàng.</div>
                     </div>
+                <?php else: ?>
+                    <ol class="od-steps" aria-label="Tiến trình đơn hàng">
+                        <?php foreach ($stepKeys as $i => $key):
+                            $cls = $currentStep === false ? '' : ($i < $currentStep ? 'done' : ($i === $currentStep ? 'current' : ''));
+                            [$label, $icon] = $steps[$key];
+                        ?>
+                            <li class="od-step <?= $cls ?>" <?= $cls === 'current' ? 'aria-current="step"' : '' ?>>
+                                <span class="od-dot"><i class="bi <?= $icon ?>"></i></span>
+                                <?= $e($label) ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ol>
+                <?php endif; ?>
+            </div>
+
+            <!-- Sản phẩm -->
+            <div class="od-card animate-fade-up" style="animation-delay: 20ms">
+                <h2 class="od-card-title"><i class="bi bi-bag"></i> Sản phẩm (<?= (int) $itemsQty ?>)</h2>
+                <?php foreach ($orderDetails as $item):
+                    // Sản phẩm còn bán -> tên bấm được để xem lại / mua lại
+                    $linkable = ($item['product_status'] ?? '') !== 'discontinued';
+                    $productUrl = 'index.php?router=customers&controller=detail&action=index&id=' . (int) $item['product_id'];
+                ?>
+                    <div class="od-item">
+                        <img src="<?= $e(productImageUrl($item['image_url'], '200x200')) ?>" alt="" loading="lazy"
+                            onerror="this.src='https://placehold.co/100x100?text=Flower'">
+                        <div style="min-width:0">
+                            <?php if ($linkable): ?>
+                                <a href="<?= $productUrl ?>" class="od-item-name"><?= $e($item['product_name']) ?></a>
+                            <?php else: ?>
+                                <span class="od-item-name"><?= $e($item['product_name']) ?></span>
+                            <?php endif; ?>
+                            <div class="od-item-unit"><?= (int) $item['quantity'] ?> × <?= $money($item['unit_price']) ?></div>
+                        </div>
+                        <div class="od-item-sub"><?= $money($item['subtotal']) ?></div>
+                    </div>
+                <?php endforeach; ?>
+
+                <div class="od-sum">
+                    <div class="od-row"><span>Tiền hàng</span><span><?= $money($itemsTotal) ?></span></div>
+                    <div class="od-row"><span>Phí vận chuyển</span><span class="text-success">Miễn phí</span></div>
+                    <div class="od-total"><span>Tổng cộng</span><span><?= $money($order['total_amount']) ?></span></div>
                 </div>
             </div>
         </div>
-    </header>
 
-    <div class="container my-5">
-        <div class="row g-4">
-            <div class="col-lg-8">
-                <div class="detail-card animate-fade-up">
-                    <div class="d-flex justify-content-between align-items-start mb-4">
-                        <div>
-                            <h2 class="heading-font fw-bold mb-1">Chi tiết đơn hàng</h2>
-                            <p class="text-muted small mb-0">Mã đơn: <span class="fw-bold text-dark"><?= htmlspecialchars($order['order_code']) ?></span> | Ngày đặt: <?= date('d/m/Y H:i', strtotime($order['order_date'])) ?></p>
-                        </div>
-                        <?php
-                        $statusLabels = [
-                            'pending' => 'Chờ xử lý',
-                            'confirmed' => 'Đã xác nhận',
-                            'shipping' => 'Đang giao hàng',
-                            'completed' => 'Đã hoàn thành',
-                            'cancelled' => 'Đã hủy'
-                        ];
-                        ?>
-                        <span class="status-badge status-<?= $order['order_status'] ?>"><?= $statusLabels[$order['order_status']] ?? $order['order_status'] ?></span>
-                    </div>
-
-                    <div class="product-list border-top border-bottom my-4">
-                        <?php foreach ($orderDetails as $item): ?>
-                            <div class="product-item">
-                                <img src="uploads/<?= htmlspecialchars($item['image_url']) ?>" class="product-img" onerror="this.src='https://placehold.co/100x100?text=Flower'">
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-bold mb-1"><?= htmlspecialchars($item['product_name']) ?></h6>
-                                    <div class="text-muted small">Số lượng: <?= $item['quantity'] ?> × <?= number_format($item['unit_price'], 0, ',', '.') ?>đ</div>
-                                </div>
-                                <div class="fw-bold"><?= number_format($item['subtotal'], 0, ',', '.') ?>đ</div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 ms-auto">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="text-muted">Tạm tính</span>
-                                <span><?= number_format($order['total_amount'], 0, ',', '.') ?>đ</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="text-muted">Phí vận chuyển</span>
-                                <span class="text-success fw-bold">Miễn phí</span>
-                            </div>
-                            <div class="d-flex justify-content-between mt-3 pt-3 border-top">
-                                <h5 class="fw-bold">Tổng cộng</h5>
-                                <h5 class="fw-bold text-danger"><?= number_format($order['total_amount'], 0, ',', '.') ?>đ</h5>
-                            </div>
-                        </div>
-                    </div>
+        <div class="col-lg-4">
+            <div class="sticky-lg">
+                <div class="od-card animate-fade-up" style="animation-delay: 40ms">
+                    <h2 class="od-card-title"><i class="bi bi-geo-alt"></i> Giao đến</h2>
+                    <dl class="od-info mb-0">
+                        <dt>Người nhận</dt>
+                        <dd><?= $e($order['receiver_name']) ?> · <?= $e($order['receiver_phone']) ?></dd>
+                        <dt>Địa chỉ</dt>
+                        <dd><?= $e($order['delivery_address']) ?></dd>
+                        <?php if (trim((string) $order['note']) !== ''): ?>
+                            <dt>Ghi chú</dt>
+                            <dd class="fst-italic"><?= nl2br($e($order['note'])) ?></dd>
+                        <?php endif; ?>
+                    </dl>
                 </div>
-            </div>
 
-            <div class="col-lg-4">
-                <div class="detail-card animate-fade-up" style="animation-delay: 100ms">
-                    <h5 class="fw-bold mb-4">Thông tin nhận hàng</h5>
-                    <div class="mb-4">
-                        <div class="text-muted small fw-bold text-uppercase mb-1">Người nhận</div>
-                        <div><?= htmlspecialchars($order['receiver_name']) ?></div>
-                    </div>
-                    <div class="mb-4">
-                        <div class="text-muted small fw-bold text-uppercase mb-1">Số điện thoại</div>
-                        <div><?= htmlspecialchars($order['receiver_phone']) ?></div>
-                    </div>
-                    <div class="mb-4">
-                        <div class="text-muted small fw-bold text-uppercase mb-1">Địa chỉ giao hàng</div>
-                        <div><?= htmlspecialchars($order['delivery_address']) ?></div>
-                    </div>
-                    <?php if ($order['note']): ?>
-                    <div class="mb-4">
-                        <div class="text-muted small fw-bold text-uppercase mb-1">Ghi chú</div>
-                        <div class="fst-italic"><?= htmlspecialchars($order['note']) ?></div>
-                    </div>
+                <div class="od-card animate-fade-up" style="animation-delay: 60ms">
+                    <h2 class="od-card-title"><i class="bi bi-wallet2"></i> Thanh toán</h2>
+                    <dl class="od-info mb-0">
+                        <dt>Phương thức</dt>
+                        <dd><?= $e(OrderHelper::PAYMENT_METHOD_LABELS[$order['payment_method']] ?? $order['payment_method']) ?></dd>
+                        <dt>Trạng thái</dt>
+                        <dd><span class="os-badge <?= $payClass ?>"><?= $e(OrderHelper::PAYMENT_STATUS_LABELS[$paymentStatus] ?? $paymentStatus) ?></span></dd>
+                    </dl>
+                </div>
+
+                <div class="od-actions animate-fade-up" style="animation-delay: 80ms">
+                    <?php if ($canCancel): ?>
+                        <!-- Huỷ đơn: POST + hộp xác nhận (popup.js); server kiểm tra lại trạng thái -->
+                        <form action="index.php?router=customers&controller=order&action=cancelOrder" method="POST" class="m-0">
+                            <input type="hidden" name="order_id" value="<?= (int) $order['order_id'] ?>">
+                            <button type="submit" class="od-btn od-btn-danger"
+                                data-confirm="Đơn <?= $e($order['order_code']) ?> sẽ bị hủy và không thể khôi phục."
+                                data-confirm-title="Hủy đơn hàng?" data-confirm-variant="danger"
+                                data-confirm-ok="Hủy đơn" data-confirm-cancel="Không, giữ lại">
+                                <i class="bi bi-x-circle"></i> Hủy đơn hàng
+                            </button>
+                        </form>
+                        <p class="od-hint">Bạn có thể hủy khi cửa hàng chưa xác nhận đơn.</p>
                     <?php endif; ?>
-                    <div class="mb-0">
-                        <div class="text-muted small fw-bold text-uppercase mb-1">Phương thức thanh toán</div>
-                        <div>
-                            <?php
-                            $methods = ['cod' => 'Thanh toán khi nhận hàng', 'bank_transfer' => 'Chuyển khoản ngân hàng', 'e_wallet' => 'Ví điện tử'];
-                            echo $methods[$order['payment_method']] ?? $order['payment_method'];
-                            ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4 animate-fade-up d-flex flex-column gap-3">
-                    <a href="index.php?router=customers&controller=order&action=listOrders" class="btn btn-primary w-100 rounded-4 py-3 fw-bold" style="background: var(--primary-color); border: none;">
-                        <i class="bi bi-list-ul"></i> QUAY LẠI DANH SÁCH
-                    </a>
-                    <a href="index.php?router=customers" class="btn btn-outline-secondary w-100 rounded-4 py-3 fw-bold border-2">
-                        <i class="bi bi-arrow-left"></i> TIẾP TỤC MUA SẮM
-                    </a>
+                    <a href="index.php?router=customers" class="od-btn od-btn-primary"><i class="bi bi-bag-heart"></i> Tiếp tục mua sắm</a>
                 </div>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-
-</html>
+</div>

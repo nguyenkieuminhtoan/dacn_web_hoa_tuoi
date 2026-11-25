@@ -9,7 +9,8 @@ function uploadImage($fileInput, $tagetDir = __DIR__ . "/../uploads/")
         $targetFile = $tagetDir . $fileName;
 
         $fileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
-        $fileAlow = ['jpg', 'png', 'jpeg'];
+        // Khớp với accept của form sản phẩm (jpeg, png, gif, webp)
+        $fileAlow = ['jpg', 'png', 'jpeg', 'gif', 'webp'];
 
         if (in_array($fileType, $fileAlow)) {
             if (move_uploaded_file($fileInput['tmp_name'], $targetFile)) {
@@ -18,6 +19,15 @@ function uploadImage($fileInput, $tagetDir = __DIR__ . "/../uploads/")
         }
     }
     return null;
+}
+
+// URL ảnh sản phẩm cho trang khách hàng; chưa có ảnh (image_url NULL/rỗng) -> ảnh tạm
+function productImageUrl($fileName, $placeholderSize = '400x500')
+{
+    if (empty($fileName)) {
+        return 'https://placehold.co/' . $placeholderSize . '/fdf0f4/c2185b?text=Flower';
+    }
+    return 'uploads/' . $fileName;
 }
 
 function deleteImage($fileName, $tagetDir = __DIR__ . '/../uploads/')

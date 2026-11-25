@@ -1,0 +1,150 @@
+/* ==================================================================
+   page-transition.css — Hiệu ứng chuyển trang dùng chung (admin + cửa hàng)
+   Đánh dấu trong layout (nên thêm <link rel="expect" href="#mainContent" blocking="render">
+   để trình duyệt chờ phần nội dung trước khi vẽ trang mới):
+     data-vt="main"     -> phần nội dung (trượt + mờ khi chuyển trang)
+     data-vt="header"   -> thanh trên cùng (mờ chéo nhanh)
+     data-vt="sidebar"  -> sidebar (đứng yên)
+     data-vt="tabbar"   -> thanh tab đáy mobile (đứng yên)
+   Đi kèm assets/js/page-transition.js và <div class="gn-progress" id="gnProgress">
+   ================================================================== */
+
+/* View Transitions giữa các trang (Chrome/Edge 126+, Safari 18.2+) */
+@view-transition {
+    navigation: auto;
+}
+
+/* Tên vt-sidebar / vt-header / vt-tabbar / vt-main được page-transition.js gắn vào các phần tử
+   [data-vt] CHỈ trong lúc chuyển trang (gắn cố định sẽ tạo stacking context làm popup bị đè). */
+
+/* Phần khung đứng yên */
+::view-transition-group(vt-sidebar),
+::view-transition-group(vt-tabbar),
+::view-transition-group(vt-main),
+::view-transition-old(vt-sidebar),
+::view-transition-new(vt-sidebar),
+::view-transition-old(vt-tabbar),
+::view-transition-new(vt-tabbar) {
+    animation: none;
+}
+
+::view-transition-old(vt-sidebar),
+::view-transition-old(vt-tabbar) {
+    display: none;
+}
+
+/* Thanh trên cùng: chỉ tiêu đề / số giỏ hàng đổi -> mờ chéo nhanh */
+::view-transition-group(vt-header) {
+    animation-duration: 120ms;
+}
+
+/* Nội dung: trang cũ trượt sang trái + mờ đi, trang mới trượt vào từ phải.
+   Ngắn + chạy song song (không chờ) để chuyển trang có cảm giác tức thì: tổng ~180ms */
+::view-transition-old(vt-main) {
+    animation: 100ms cubic-bezier(.4, 0, 1, 1) both vt-page-out;
+}
+
+::view-transition-new(vt-main) {
+    animation: 180ms cubic-bezier(0, 0, .2, 1) both vt-page-in;
+}
+
+/* Quay lại: đảo chiều */
+html:active-view-transition-type(back)::view-transition-old(vt-main) {
+    animation-name: vt-page-out-back;
+}
+
+html:active-view-transition-type(back)::view-transition-new(vt-main) {
+    animation-name: vt-page-in-back;
+}
+
+@keyframes vt-page-out {
+    to {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+}
+
+@keyframes vt-page-in {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+}
+
+@keyframes vt-page-out-back {
+    to {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+}
+
+@keyframes vt-page-in-back {
+    from {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+}
+
+/* Dự phòng (Firefox...): nội dung trang mới hiện dần lên */
+.gn-anim-fallback [data-vt="main"] {
+    animation: vt-page-rise 200ms cubic-bezier(0, 0, .2, 1) both;
+}
+
+@keyframes vt-page-rise {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+/* ---------- Thanh tiến trình khi đang chuyển trang ---------- */
+.gn-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0;
+    z-index: 2200;
+    background: linear-gradient(90deg, #fb7185, #e11d48);
+    box-shadow: 0 0 8px rgba(225, 29, 72, .45);
+    border-radius: 0 3px 3px 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.gn-progress.is-loading {
+    opacity: 1;
+    animation: vt-progress-grow 8s cubic-bezier(.08, .8, .2, 1) forwards;
+}
+
+@keyframes vt-progress-grow {
+    0% {
+        width: 0;
+    }
+
+    10% {
+        width: 35%;
+    }
+
+    100% {
+        width: 92%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
+    }
+
+    .gn-anim-fallback [data-vt="main"] {
+        animation: none;
+    }
+
+    .gn-progress.is-loading {
+        animation: none;
+        width: 60%;
+    }
+}

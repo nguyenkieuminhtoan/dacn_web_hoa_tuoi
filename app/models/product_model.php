@@ -22,13 +22,24 @@ class ProductModel
         return $products;
     }
 
-    public function getProductsForCustomerPagination($limit, $offset, $selectedCategories = [], $selectedPriceRange = null)
+    // Từ khóa tìm kiếm -> mẫu LIKE (thoát ký tự % và _ do người dùng gõ)
+    private function keywordPattern($keyword)
+    {
+        return '%' . addcslashes(trim((string) $keyword), '%_\\') . '%';
+    }
+
+    public function getProductsForCustomerPagination($limit, $offset, $selectedCategories = [], $selectedPriceRange = null, $keyword = '')
     {
         $pdo = pdo_connect();
         $sql = "SELECT p.product_id, p.product_name, p.price, p.image_url, p.stock_quantity, p.status, c.category_name, c.category_id
-                FROM products p 
-                JOIN categories c ON p.category_id = c.category_id 
+                FROM products p
+                JOIN categories c ON p.category_id = c.category_id
                 WHERE p.status = 'available'";
+
+        // Tìm kiếm theo tên sản phẩm / tên danh mục
+        if (trim((string) $keyword) !== '') {
+            $sql .= " AND (p.product_name LIKE ? OR c.category_name LIKE ?)";
+        }
 
         // Filter by categories
         if (!empty($selectedCategories) && is_array($selectedCategories)) {
@@ -45,8 +56,13 @@ class ProductModel
 
         $stmt = $pdo->prepare($sql);
 
-        // Bind category parameters
         $paramIndex = 1;
+        if (trim((string) $keyword) !== '') {
+            $stmt->bindValue($paramIndex++, $this->keywordPattern($keyword));
+            $stmt->bindValue($paramIndex++, $this->keywordPattern($keyword));
+        }
+
+        // Bind category parameters
         if (!empty($selectedCategories) && is_array($selectedCategories)) {
             foreach ($selectedCategories as $categoryId) {
                 $stmt->bindValue($paramIndex++, $categoryId, PDO::PARAM_INT);
@@ -78,34 +94,60 @@ class ProductModel
         $promotionModel = new PromotionModel();
         $promotions = $promotionModel->getProductPromotions($productIds);
 
-        // Map promotions to products
+        // Gom khuyến mãi theo sản phẩm
         $promotionMap = [];
         foreach ($promotions as $promo) {
-            $promotionMap[$promo['product_id']] = $promo;
+            $promotionMap[$promo['product_id']][] = $promo;
         }
 
         foreach ($products as &$product) {
-            if (isset($promotionMap[$product['product_id']])) {
-                $promo = $promotionMap[$product['product_id']];
-                $product['promotion'] = $promo;
+            if (empty($promotionMap[$product['product_id']])) continue;
 
-                // Calculate discounted price
-                if ($promo['discount_type'] === 'percentage') {
-                    $product['discounted_price'] = $product['price'] * (1 - $promo['discount_value'] / 100);
-                } else {
-                    $product['discounted_price'] = $product['price'] - $promo['discount_value'];
-                }
-                $product['discounted_price'] = max(0, $product['discounted_price']);
+            // Nhiều khuyến mãi cùng lúc -> chọn cái cho giá thấp nhất
+            // (trước đây lấy cái cuối danh sách nên trang chủ và trang chi tiết có thể lệch giá)
+            $best = null;
+            foreach ($promotionMap[$product['product_id']] as $promo) {
+                $price = $promo['discount_type'] === 'percentage'
+                    ? $product['price'] * (1 - $promo['discount_value'] / 100)
+                    : $product['price'] - $promo['discount_value'];
+                $price = max(0, $price);
+                if ($best === null || $price < $best[1]) $best = [$promo, $price];
             }
+            $product['promotion'] = $best[0];
+            $product['discounted_price'] = $best[1];
         }
+        unset($product);
     }
 
-    public function countProductsForCustomer($selectedCategories = [], $selectedPriceRange = null)
+    // Sản phẩm gợi ý cho trang chi tiết: ưu tiên cùng danh mục, thiếu thì lấy thêm sản phẩm mới nhất
+    public function getRelatedProducts($categoryId, $excludeId, $limit = 4)
+    {
+        $sql = "SELECT p.product_id, p.product_name, p.price, p.image_url, p.stock_quantity, p.status, c.category_name, c.category_id
+                FROM products p
+                JOIN categories c ON p.category_id = c.category_id
+                WHERE p.status = 'available' AND p.product_id <> ?
+                ORDER BY (p.category_id = ?) DESC, p.product_id DESC
+                LIMIT ?";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(1, (int) $excludeId, PDO::PARAM_INT);
+        $stmt->bindValue(2, (int) $categoryId, PDO::PARAM_INT);
+        $stmt->bindValue(3, (int) $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->applyPromotions($products);
+        return $products;
+    }
+
+    public function countProductsForCustomer($selectedCategories = [], $selectedPriceRange = null, $keyword = '')
     {
         $pdo = pdo_connect();
         $sql = "SELECT COUNT(*) FROM products p
                 JOIN categories c ON p.category_id = c.category_id
                 WHERE p.status = 'available'";
+
+        if (trim((string) $keyword) !== '') {
+            $sql .= " AND (p.product_name LIKE ? OR c.category_name LIKE ?)";
+        }
 
         // Filter by categories
         if (!empty($selectedCategories) && is_array($selectedCategories)) {
@@ -120,8 +162,13 @@ class ProductModel
 
         $stmt = $pdo->prepare($sql);
 
-        // Bind category parameters
         $paramIndex = 1;
+        if (trim((string) $keyword) !== '') {
+            $stmt->bindValue($paramIndex++, $this->keywordPattern($keyword));
+            $stmt->bindValue($paramIndex++, $this->keywordPattern($keyword));
+        }
+
+        // Bind category parameters
         if (!empty($selectedCategories) && is_array($selectedCategories)) {
             foreach ($selectedCategories as $categoryId) {
                 $stmt->bindValue($paramIndex++, $categoryId, PDO::PARAM_INT);

@@ -190,66 +190,10 @@ if ($navCtrl !== 'dashboard') {
     </script>
     <script src="../../../assets/js/admin.js" defer></script>
 
-    <!-- Hiệu ứng chuyển trang + thanh tiến trình (phải chạy trước lần vẽ đầu tiên) -->
-    <script>
-        (function() {
-            var root = document.documentElement;
-            // Trình duyệt chưa hỗ trợ View Transitions giữa các trang -> dùng hiệu ứng hiện dần dự phòng
-            if (!('onpagereveal' in window)) root.classList.add('gn-anim-fallback');
-
-            // Chiều chuyển trang: bấm "Quay lại" hoặc Back/Forward của trình duyệt -> trượt ngược
-            window.addEventListener('pagereveal', function(e) {
-                if (!e.viewTransition) return;
-                var dir = null;
-                try {
-                    dir = sessionStorage.getItem('gn-nav-dir');
-                    sessionStorage.removeItem('gn-nav-dir');
-                } catch (err) {}
-                var nav = window.navigation && navigation.activation;
-                if (dir === 'back' || (nav && nav.navigationType === 'traverse')) {
-                    e.viewTransition.types.add('back');
-                }
-            });
-            document.addEventListener('click', function(e) {
-                if (e.target.closest && e.target.closest('.gn-back-btn')) {
-                    try { sessionStorage.setItem('gn-nav-dir', 'back'); } catch (err) {}
-                }
-            }, true);
-
-            // ---------- Thanh tiến trình khi đang chuyển trang ----------
-            function startProgress() {
-                var bar = document.getElementById('gnProgress');
-                if (bar) bar.classList.add('is-loading');
-            }
-            function stopProgress() {
-                var bar = document.getElementById('gnProgress');
-                if (bar) bar.classList.remove('is-loading');
-            }
-            if (window.navigation) {
-                // Navigation API: bắt mọi kiểu chuyển trang (link, form, location.href sau khi xác nhận...)
-                navigation.addEventListener('navigate', function(e) {
-                    if (e.destination.sameDocument || e.downloadRequest !== null && e.downloadRequest !== undefined) return;
-                    startProgress();
-                });
-                // Chuyển trang bị hủy / lỗi mạng -> tắt thanh tiến trình
-                navigation.addEventListener('navigateerror', stopProgress);
-            } else {
-                // Dự phòng: link thường và form (bỏ qua khi bị chặn, vd: mở popup form)
-                document.addEventListener('click', function(e) {
-                    var a = e.target.closest && e.target.closest('a[href]');
-                    if (!a || a.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
-                    var href = a.getAttribute('href');
-                    if (!href || href.charAt(0) === '#' || /^(mailto|tel|javascript):/i.test(href)) return;
-                    setTimeout(function() { if (!e.defaultPrevented) startProgress(); }, 0);
-                });
-                document.addEventListener('submit', function(e) {
-                    setTimeout(function() { if (!e.defaultPrevented) startProgress(); }, 0);
-                });
-            }
-            // Quay lại bằng bộ nhớ đệm (bfcache) -> tắt thanh tiến trình còn treo
-            window.addEventListener('pageshow', stopProgress);
-        })();
-    </script>
+    <!-- Hiệu ứng chuyển trang + thanh tiến trình (dùng chung với trang cửa hàng) -->
+    <link rel="stylesheet" href="../../../assets/css/page-transition.css">
+    <link rel="expect" href="#mainContent" blocking="render">
+    <script src="../../../assets/js/page-transition.js"></script>
 
     <style>
         :root {
@@ -923,13 +867,16 @@ if ($navCtrl !== 'dashboard') {
                 color: var(--gn-accent);
             }
 
-            .gn-tab.active::before {
+            /* Vạch gạch chân mục đang chọn — nằm dưới chữ */
+            .gn-tab.active::after {
                 content: "";
                 position: absolute;
-                top: 0;
-                width: 28px;
+                bottom: 5px;
+                left: 50%;
+                width: 22px;
                 height: 3px;
-                border-radius: 0 0 4px 4px;
+                margin-left: -11px;
+                border-radius: 3px;
                 background: var(--gn-accent);
             }
 
@@ -955,159 +902,9 @@ if ($navCtrl !== 'dashboard') {
             }
         }
 
-        /* ================= HIỆU ỨNG CHUYỂN TRANG ================= */
-        /* View Transitions giữa các trang (Chrome/Edge 126+, Safari 18.2+) */
-        @view-transition {
-            navigation: auto;
-        }
-
-        /* Sidebar, top bar, tab đáy đứng yên — chỉ phần nội dung chuyển động */
-        .gn-sidebar {
-            view-transition-name: gn-sidebar;
-        }
-
-        .gn-topbar {
-            view-transition-name: gn-topbar;
-        }
-
-        .gn-tabbar {
-            view-transition-name: gn-tabbar;
-        }
-
-        .gn-main {
-            view-transition-name: gn-main;
-        }
-
-        ::view-transition-group(gn-sidebar),
-        ::view-transition-group(gn-tabbar),
-        ::view-transition-group(gn-main),
-        ::view-transition-old(gn-sidebar),
-        ::view-transition-new(gn-sidebar),
-        ::view-transition-old(gn-tabbar),
-        ::view-transition-new(gn-tabbar) {
-            animation: none;
-        }
-
-        ::view-transition-old(gn-sidebar),
-        ::view-transition-old(gn-tabbar) {
-            display: none;
-        }
-
-        /* Top bar: chỉ tên trang đổi -> mờ chéo thật nhanh */
-        ::view-transition-group(gn-topbar) {
-            animation-duration: 160ms;
-        }
-
-        /* Nội dung: trang cũ trượt sang trái + mờ đi, trang mới trượt vào từ phải */
-        ::view-transition-old(gn-main) {
-            animation: 160ms cubic-bezier(.4, 0, 1, 1) both gn-page-out;
-        }
-
-        ::view-transition-new(gn-main) {
-            animation: 280ms cubic-bezier(0, 0, .2, 1) 60ms both gn-page-in;
-        }
-
-        /* Quay lại: đảo chiều */
-        html:active-view-transition-type(back)::view-transition-old(gn-main) {
-            animation-name: gn-page-out-back;
-        }
-
-        html:active-view-transition-type(back)::view-transition-new(gn-main) {
-            animation-name: gn-page-in-back;
-        }
-
-        @keyframes gn-page-out {
-            to {
-                opacity: 0;
-                transform: translateX(-24px);
-            }
-        }
-
-        @keyframes gn-page-in {
-            from {
-                opacity: 0;
-                transform: translateX(24px);
-            }
-        }
-
-        @keyframes gn-page-out-back {
-            to {
-                opacity: 0;
-                transform: translateX(24px);
-            }
-        }
-
-        @keyframes gn-page-in-back {
-            from {
-                opacity: 0;
-                transform: translateX(-24px);
-            }
-        }
-
-        /* Dự phòng (Firefox...): nội dung trang mới hiện dần lên */
-        .gn-anim-fallback .gn-main {
-            animation: gn-page-rise 320ms cubic-bezier(0, 0, .2, 1) both;
-        }
-
-        @keyframes gn-page-rise {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-        }
-
-        /* Thanh tiến trình khi đang chuyển trang */
-        .gn-progress {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 3px;
-            width: 0;
-            z-index: 2200;
-            background: linear-gradient(90deg, #fb7185, var(--gn-accent));
-            box-shadow: 0 0 8px rgba(225, 29, 72, .45);
-            border-radius: 0 3px 3px 0;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .gn-progress.is-loading {
-            opacity: 1;
-            animation: gn-progress-grow 8s cubic-bezier(.08, .8, .2, 1) forwards;
-        }
-
-        @keyframes gn-progress-grow {
-            0% {
-                width: 0;
-            }
-
-            10% {
-                width: 35%;
-            }
-
-            100% {
-                width: 92%;
-            }
-        }
-
         @media (prefers-reduced-motion: reduce) {
             * {
                 transition: none !important;
-            }
-
-            ::view-transition-group(*),
-            ::view-transition-old(*),
-            ::view-transition-new(*) {
-                animation: none !important;
-            }
-
-            .gn-anim-fallback .gn-main {
-                animation: none;
-            }
-
-            .gn-progress.is-loading {
-                animation: none;
-                width: 60%;
             }
         }
     </style>
@@ -1129,7 +926,7 @@ if ($navCtrl !== 'dashboard') {
     </script>
 
     <!-- ================= SIDEBAR (tablet / desktop) ================= -->
-    <aside class="gn-sidebar" id="gnSidebar" aria-label="Menu quản trị">
+    <aside class="gn-sidebar" id="gnSidebar" aria-label="Menu quản trị" data-vt="sidebar">
         <a class="gn-brand" href="<?= gn_url('dashboard') ?>" title="<?= $gnBrand ?>">
             <span class="gn-brand-mark"><i class="fas fa-spa"></i></span>
             <span class="gn-brand-text">
@@ -1195,7 +992,7 @@ if ($navCtrl !== 'dashboard') {
     </aside>
 
     <!-- ================= TOP BAR ================= -->
-    <header class="gn-topbar<?= $gnBack ? ' has-back' : '' ?>">
+    <header class="gn-topbar<?= $gnBack ? ' has-back' : '' ?>" data-vt="header">
         <button class="gn-icon-btn gn-desktop-only" type="button" id="gnToggle" title="Thu gọn / mở rộng menu"
             aria-controls="gnSidebar">
             <i class="fas fa-bars"></i>
@@ -1226,7 +1023,7 @@ if ($navCtrl !== 'dashboard') {
     </header>
 
     <!-- ================= NỘI DUNG TRANG ================= -->
-    <main class="gn-main" id="mainContent">
+    <main class="gn-main" id="mainContent" data-vt="main">
         <?php
         if (isset($viewFile) && file_exists($viewFile)) {
             include $viewFile;
@@ -1237,7 +1034,7 @@ if ($navCtrl !== 'dashboard') {
     </main>
 
     <!-- ================= TAB DƯỚI ĐÁY (mobile) ================= -->
-    <nav class="gn-tabbar gn-mobile-only" aria-label="Menu chính">
+    <nav class="gn-tabbar gn-mobile-only" aria-label="Menu chính" data-vt="tabbar">
         <?php foreach ($gnTabs as $t): ?>
             <a class="gn-tab<?= $navCtrl === $t[2] ? ' active' : '' ?>" href="<?= $t[3] ?>"
                 <?= $navCtrl === $t[2] ? 'aria-current="page"' : '' ?>>

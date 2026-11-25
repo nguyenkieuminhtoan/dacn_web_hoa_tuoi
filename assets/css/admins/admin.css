@@ -339,6 +339,11 @@
     max-width: 360px;
 }
 
+/* Giữ nguyên xuống dòng người dùng đã nhập trong ô mô tả */
+.ad-pre-line {
+    white-space: pre-line;
+}
+
 /* Ô sản phẩm: ảnh + tên + dòng phụ */
 .ad-item {
     display: flex;
