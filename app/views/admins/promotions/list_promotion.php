@@ -60,7 +60,7 @@
                                     <span class="ad-item-name"><?= ad_e($p['promotion_name']) ?></span>
                                 </div>
                                 <?php if (!empty($p['description'])): ?>
-                                    <div class="ad-item-sub ad-clamp mt-1"><?= ad_e($p['description']) ?></div>
+                                    <div class="ad-item-sub ad-clamp ad-pre-line mt-1"><?= ad_e($p['description']) ?></div>
                                 <?php endif; ?>
                             </td>
                             <td data-label="Mức giảm" class="ad-nowrap ad-strong"><?= ad_e(ad_discount($p['discount_type'], $p['discount_value'])) ?></td>

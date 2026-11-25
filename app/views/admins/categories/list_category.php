@@ -37,6 +37,7 @@
                     <tr>
                         <th>Danh mục</th>
                         <th>Mô tả</th>
+                        <th class="ad-num">Tổng sản phẩm</th>
                         <th>Ngày tạo</th>
                         <th>Cập nhật</th>
                         <th class="ad-num">Thao tác</th>
@@ -55,7 +56,10 @@
                                 </div>
                             </td>
                             <td data-label="Mô tả">
-                                <div class="ad-clamp ad-muted" title="<?= ad_e($c['description']) ?>"><?= ad_e($c['description'] ?: '—') ?></div>
+                                <div class="ad-clamp ad-pre-line ad-muted" title="<?= ad_e($c['description']) ?>"><?= ad_e($c['description'] ?: '—') ?></div>
+                            </td>
+                            <td data-label="Tổng sản phẩm" class="ad-num ad-nowrap">
+                                <strong class="<?= (int) $c['product_count'] === 0 ? 'ad-muted' : '' ?>"><?= (int) $c['product_count'] ?></strong>
                             </td>
                             <td data-label="Ngày tạo" class="ad-nowrap"><?= ad_date($c['created_at']) ?></td>
                             <td data-label="Cập nhật" class="ad-nowrap"><?= ad_date($c['updated_at']) ?></td>

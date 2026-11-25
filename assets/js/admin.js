@@ -6,7 +6,8 @@
  *      <input name="product_name" data-label="tên sản phẩm" data-rules="required|min:3|max:100">
  *      <div class="ad-error" data-error-for="product_name"></div>
  *    Luật: required | min:N | max:N (độ dài chữ) | gte:N | lte:N (giá trị số) | int | email | phone
- *          | after:<tên trường> (ngày) — nhóm radio: đặt data-rules ở ô đầu tiên
+ *          | after:<tên trường> (ngày) | same:<tên trường> (vd: nhập lại mật khẩu)
+ *          — nhóm radio: đặt data-rules ở ô đầu tiên
  *    Đổi câu báo lỗi: data-msg-required="..." , data-msg-min="..." ...
  *
  * 2) Ô chọn ảnh:  <label class="ad-upload" data-upload> <input type="file"> <img> ... </label>
@@ -82,6 +83,10 @@
                 case 'int':
                     if (val !== '' && !/^-?\d+$/.test(val)) msg = custom || cap(label) + ' phải là số nguyên';
                     break;
+                case 'same':
+                    var target = form.elements[arg];
+                    if (val !== '' && target && raw !== target.value) msg = custom || cap(label) + ' không khớp';
+                    break;
                 case 'after':
                     var other = form.elements[arg];
                     if (val !== '' && other && other.value !== '' && val < other.value) {
@@ -146,13 +151,29 @@
                 saveDraft(form);
                 form.dispatchEvent(new CustomEvent('gn:submitting', { bubbles: true }));
             }
-            var btn = e.submitter || form.querySelector('[type=submit]');
-            if (btn && btn.tagName === 'BUTTON') {
+            // Mọi nút submit của form (vd nút ở khung tóm tắt + thanh dính đáy mobile) đều chuyển trạng thái chờ.
+            // Chữ hiển thị lấy từ data-busy-text (mặc định "Đang lưu...").
+            var btns = form.querySelectorAll('button[type=submit]');
+            if (!btns.length && e.submitter && e.submitter.tagName === 'BUTTON') btns = [e.submitter];
+            Array.prototype.forEach.call(btns, function (btn) {
+                if (!btn.dataset.idleHtml) btn.dataset.idleHtml = btn.innerHTML;
                 btn.setAttribute('aria-busy', 'true');
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Đang lưu...';
-            }
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ' + (btn.dataset.busyText || 'Đang lưu...');
+            });
         });
     }
+
+    // Quay lại trang bằng nút Back (trang lấy từ bfcache) -> mở khóa form đang ở trạng thái "đang gửi"
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        document.querySelectorAll('form[data-submitting="1"]').forEach(function (form) {
+            delete form.dataset.submitting;
+            form.querySelectorAll('button[aria-busy="true"]').forEach(function (btn) {
+                btn.removeAttribute('aria-busy');
+                if (btn.dataset.idleHtml) btn.innerHTML = btn.dataset.idleHtml;
+            });
+        });
+    });
 
     // ================= 2. Ô CHỌN ẢNH =================
     var IMG_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

@@ -8,6 +8,8 @@
 -- PHP Version: 8.2.18
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+-- Tắt kiểm tra khóa ngoại để DROP/CREATE lại bảng được khi chạy file này nhiều lần
+SET FOREIGN_KEY_CHECKS = 0;
 START TRANSACTION;
 SET time_zone = "+00:00";
 
@@ -19,6 +21,8 @@ SET time_zone = "+00:00";
 
 --
 -- Database: `flower_shop_db`
+-- File này CHỈ tạo bảng (không có dữ liệu).
+-- Tài khoản đăng nhập + dữ liệu mẫu nằm ở seed_data_v1.sql (chạy sau file này).
 --
 
 -- --------------------------------------------------------
@@ -41,15 +45,6 @@ CREATE TABLE IF NOT EXISTS `admins` (
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `admins`
--- Mật khẩu của tất cả tài khoản: 1
---
-
-INSERT INTO `admins` (`admin_id`, `username`, `email`, `password`, `full_name`, `phone`) VALUES
-(1, 'admin', 'admin@flowershop.vn', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Quản Trị Viên', '0901000001'),
-(2, 'quanly', 'quanly@flowershop.vn', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Nguyễn Minh Quân', '0901000002');
 
 -- --------------------------------------------------------
 
@@ -129,16 +124,6 @@ CREATE TABLE IF NOT EXISTS `customers` (
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `customers`
--- Mật khẩu của tất cả tài khoản: 1
---
-
-INSERT INTO `customers` (`customer_id`, `username`, `email`, `password`, `full_name`, `phone`, `address`) VALUES
-(1, 'user1', 'user1@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Nguyễn Văn An', '0912345671', '12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh'),
-(2, 'user2', 'user2@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Trần Thị Bình', '0912345672', '45 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh'),
-(3, 'user3', 'user3@gmail.com', '$2y$12$OGZfYv/ErdMS/09L1Xgk6u9hPwtdS3NND99xPgP1QLf7DuCYQXCy6', 'Lê Văn Cường', '0912345673', '88 Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội');
 
 -- --------------------------------------------------------
 
@@ -293,6 +278,7 @@ ALTER TABLE `product_promotions`
   ADD CONSTRAINT `product_promotions_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `product_promotions_ibfk_2` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`promotion_id`) ON DELETE CASCADE;
 COMMIT;
+SET FOREIGN_KEY_CHECKS = 1;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

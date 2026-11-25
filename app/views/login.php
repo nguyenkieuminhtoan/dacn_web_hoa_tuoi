@@ -1,3 +1,10 @@
+<?php
+require_once __DIR__ . '/../../helpers/message_helper.php';
+MessageHelper::$useToast = true; // thông báo lỗi / thành công hiện dạng toast
+// Đăng nhập sai: giữ lại tên đăng nhập và mở đúng tab (khách hàng / quản trị)
+$loginRole = ($_POST['role'] ?? '') === 'admin' ? 'admin' : 'customer';
+$oldUser = htmlspecialchars(trim((string) ($_POST['username'] ?? '')), ENT_QUOTES, 'UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -8,6 +15,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/page-transition.css">
+    <link rel="stylesheet" href="assets/css/customers/shop.css">
+    <script src="assets/js/page-transition.js"></script>
+    <script src="assets/js/popup.js"></script>
+    <script src="assets/js/admin.js" defer></script>
     <style>
         :root {
             --floral-gold: #d4a373;
@@ -171,67 +183,61 @@
 </head>
 
 <body>
+    <div class="gn-progress" id="gnProgress" role="progressbar" aria-hidden="true"></div>
 
-    <div class="login-card">
-        <a href="index.php" class="btn-back-inner" title="Quay lại trang chủ">
+    <div class="login-card" data-vt="main">
+        <a href="index.php" class="btn-back-inner" title="Quay lại cửa hàng" aria-label="Quay lại cửa hàng" data-nav-back>
             <i class="bi bi-arrow-left"></i>
         </a>
 
         <div class="text-center mb-4">
             <h2 class="brand-title">Góc Nhỏ Có Hoa</h2>
             <p class="text-muted small">Hương sắc cho cuộc sống thêm ngọt ngào</p>
-            <?php
-            require_once __DIR__ . '/../../helpers/message_helper.php';
-            MessageHelper::logMessage();
-            ?>
+            <?php MessageHelper::logMessage(); ?>
         </div>
 
         <ul class="nav nav-tabs nav-fill" id="loginTab" role="tablist">
             <li class="nav-item">
-                <button class="nav-link active" id="customer-tab" data-bs-toggle="tab" data-bs-target="#customer">
+                <button class="nav-link<?= $loginRole === 'customer' ? ' active' : '' ?>" id="customer-tab" data-bs-toggle="tab" data-bs-target="#customer" type="button">
                     Khách hàng
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin">
+                <button class="nav-link<?= $loginRole === 'admin' ? ' active' : '' ?>" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" type="button">
                     Quản trị
                 </button>
             </li>
         </ul>
 
         <div class="tab-content">
-            <div class="tab-pane fade show active" id="customer">
-                <form action="" method="POST">
+            <div class="tab-pane fade<?= $loginRole === 'customer' ? ' show active' : '' ?>" id="customer">
+                <form action="" method="POST" data-validate>
                     <input type="hidden" name="role" value="customer">
-                    
-                    <div class="mb-2">
-                        <label class="form-label">Tên tài khoản</label>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="custUser">Tên tài khoản</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-person"></i></span>
-                            <input type="text" class="form-control" name="username" placeholder="Tên đăng nhập" required>
+                            <input type="text" class="form-control" name="username" id="custUser" placeholder="Tên đăng nhập" autocomplete="username"
+                                value="<?= $loginRole === 'customer' ? $oldUser : '' ?>" data-label="tên tài khoản" data-rules="required">
                         </div>
+                        <div class="sh-error" data-error-for="username"></div>
                     </div>
 
-                    <div class="mb-2">
-                        <label class="form-label">Mật khẩu</label>
+                    <div class="mb-4">
+                        <label class="form-label" for="custPass">Mật khẩu</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                            <input type="password" class="form-control" name="password" id="custPass" placeholder="••••••••" required>
-                            <button class="btn btn-link text-muted pe-3" type="button" onclick="togglePass('custPass', this)">
+                            <input type="password" class="form-control" name="password" id="custPass" placeholder="••••••••" autocomplete="current-password"
+                                data-label="mật khẩu" data-rules="required">
+                            <button class="btn btn-link text-muted pe-3" type="button" onclick="togglePass('custPass', this)" aria-label="Hiện mật khẩu">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="sh-error" data-error-for="password"></div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="remember">
-                            <label class="form-check-label small text-muted" for="remember">Ghi nhớ</label>
-                        </div>
-                        <a href="forgot_password.php" class="small text-muted text-decoration-none">Quên mật khẩu?</a>
-                    </div>
-
-                    <button type="submit" name="btnLoginCustomer" class="btn btn-login">ĐĂNG NHẬP</button>
+                    <button type="submit" name="btnLoginCustomer" value="1" class="btn btn-login">ĐĂNG NHẬP</button>
                 </form>
                 
                 <div class="text-center mt-4">
@@ -241,30 +247,34 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="admin">
-                <form action="" method="POST">
+            <div class="tab-pane fade<?= $loginRole === 'admin' ? ' show active' : '' ?>" id="admin">
+                <form action="" method="POST" data-validate>
                     <input type="hidden" name="role" value="admin">
-                    
+
                     <div class="mb-3">
-                        <label class="form-label">Mã nhân viên</label>
+                        <label class="form-label" for="adminUser">Tên đăng nhập quản trị</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-                            <input type="text" class="form-control" name="username" placeholder="Admin ID" required>
+                            <input type="text" class="form-control" name="username" id="adminUser" placeholder="VD: admin" autocomplete="username"
+                                value="<?= $loginRole === 'admin' ? $oldUser : '' ?>" data-label="tên đăng nhập" data-rules="required">
                         </div>
+                        <div class="sh-error" data-error-for="username"></div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">Mật khẩu hệ thống</label>
+                        <label class="form-label" for="adminPass">Mật khẩu</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-key"></i></span>
-                            <input type="password" class="form-control" name="password" id="adminPass" placeholder="••••••••" required>
-                            <button class="btn btn-link text-muted pe-3" type="button" onclick="togglePass('adminPass', this)">
+                            <input type="password" class="form-control" name="password" id="adminPass" placeholder="••••••••" autocomplete="current-password"
+                                data-label="mật khẩu" data-rules="required">
+                            <button class="btn btn-link text-muted pe-3" type="button" onclick="togglePass('adminPass', this)" aria-label="Hiện mật khẩu">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="sh-error" data-error-for="password"></div>
                     </div>
 
-                    <button type="submit" name="btnLoginAdmin" class="btn btn-login">XÁC THỰC ADMIN</button>
+                    <button type="submit" name="btnLoginAdmin" value="1" class="btn btn-login">ĐĂNG NHẬP QUẢN TRỊ</button>
                 </form>
             </div>
         </div>

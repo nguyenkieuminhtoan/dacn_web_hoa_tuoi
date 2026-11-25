@@ -11,7 +11,7 @@ class CategoryController
 
     public function listCategory()
     {
-        $listCategory = $this->model->getAllCategory();
+        $listCategory = $this->model->getAllCategoryWithProductCount();
         $viewFile = "../../views/admins/categories/list_category.php";
         include __DIR__ . '/../../views/admins/dashboard.php';
     }

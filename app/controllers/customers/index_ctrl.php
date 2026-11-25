@@ -20,8 +20,11 @@ class IndexController
             ? explode('-', $_GET['price_range'])
             : null;
 
+        // Tìm kiếm theo tên sản phẩm / danh mục (ô tìm kiếm trên header)
+        $keyword = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 100);
+
         // Phân trang
-        $itemsPerPage = 6;
+        $itemsPerPage = 8; // 8 sản phẩm / trang (2 hàng × 4 cột trên máy tính)
         $currentPage = max(1, (int)($_GET['page'] ?? 1));
         $offset = ($currentPage - 1) * $itemsPerPage;
 
@@ -30,12 +33,14 @@ class IndexController
             $itemsPerPage,
             $offset,
             $selectedCategories,
-            $selectedPriceRange
+            $selectedPriceRange,
+            $keyword
         );
 
         $totalProducts = (int) $productModel->countProductsForCustomer(
             $selectedCategories,
-            $selectedPriceRange
+            $selectedPriceRange,
+            $keyword
         );
 
         $totalPages = max(1, (int) ceil($totalProducts / $itemsPerPage));
@@ -68,6 +73,8 @@ class IndexController
         $baseQuery = http_build_query($queryParams);
         $baseUrl = $baseQuery ? '?' . $baseQuery . '&' : '?';
 
-        require_once __DIR__ . '/../../views/customers/dashboard.php';
+        $viewFile = __DIR__ . '/../../views/customers/dashboard.php';
+        $pageTitle = $keyword !== '' ? 'Tìm kiếm: ' . $keyword : '';
+        require __DIR__ . '/../../views/customers/layout.php';
     }
 }

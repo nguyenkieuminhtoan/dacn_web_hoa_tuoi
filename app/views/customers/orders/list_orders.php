@@ -1,388 +1,424 @@
-<?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
-<!DOCTYPE html>
 <?php
 /**
- * @var array $orders
+ * Đơn hàng của tôi. Biến từ OrderController::listOrders():
+ * @var array  $orders         đơn theo tab đang chọn
+ * @var array  $statusCounts   [order_status => số đơn]
+ * @var string $currentStatus  '' = tất cả
+ * @var int    $totalOrders
  */
+$e = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+$money = fn($v) => number_format((float) $v, 0, ',', '.') . 'đ';
+$listUrl = 'index.php?router=customers&controller=order&action=listOrders';
+
+$tabs = ['' => 'Tất cả'] + OrderHelper::STATUS_LABELS;
 ?>
-<html lang="vi">
+<style>
+    .ol-page {
+        max-width: 960px;
+        padding-top: 2rem;
+    }
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Đơn hàng của tôi - Góc Nhỏ Có Hoa</title>
+    .ol-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    .ol-title {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -.5px;
+        color: #3a2c23;
+        margin: 0;
+    }
 
-    <style>
-        :root {
-            --primary-color: #e91e63;
-            --primary-gradient: linear-gradient(135deg, #e91e63, #c2185b);
-            --bg-color: #FFF5F7;
-            --card-bg: #ffffff;
-            --text-main: #2d2a24;
-            --text-muted: #6b5a4c;
-            --radius-md: 20px;
-            --shadow-sm: 0 8px 20px rgba(194, 24, 91, 0.08);
-            --transition: all 0.3s ease;
+    .ol-title small {
+        font-size: .9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        letter-spacing: 0;
+        margin-left: 8px;
+    }
+
+    .ol-shop {
+        font-size: .9rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .ol-shop:hover {
+        text-decoration: underline;
+    }
+
+    /* ---------- Tab trạng thái (cuộn ngang trên mobile) ---------- */
+    .ol-tabs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 2px 2px 10px;
+        margin: 0 -2px 1rem;
+        scrollbar-width: none;
+    }
+
+    .ol-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ol-tab {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid #f0e1e6;
+        color: var(--text-main);
+        font-size: .88rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+
+    .ol-tab:hover {
+        border-color: var(--accent-color);
+        color: var(--primary-color);
+    }
+
+    .ol-tab.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
+    }
+
+    .ol-tab .n {
+        font-size: .72rem;
+        font-weight: 700;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #f8eef1;
+        color: var(--text-muted);
+        display: grid;
+        place-items: center;
+    }
+
+    .ol-tab.active .n {
+        background: rgba(255, 255, 255, .25);
+        color: #fff;
+    }
+
+    /* ---------- Thẻ đơn (cả thẻ bấm được) ---------- */
+    .ol-card {
+        display: block;
+        background: var(--card-bg);
+        border: 1px solid #f3e9e2;
+        border-radius: 20px;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: .85rem;
+        color: var(--text-main);
+        text-decoration: none;
+        transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+
+    .ol-card:hover {
+        border-color: #f6c2d3;
+        box-shadow: 0 12px 28px rgba(224, 90, 126, .1);
+        transform: translateY(-2px);
+        color: var(--text-main);
+    }
+
+    .ol-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: .8rem 1.25rem;
+        border-bottom: 1px solid #f6eee9;
+        font-size: .85rem;
+    }
+
+    .ol-code {
+        font-weight: 800;
+        color: var(--text-main);
+    }
+
+    .ol-date {
+        color: var(--text-muted);
+        margin-left: 8px;
+    }
+
+    .ol-card-body {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) auto 18px;
+        align-items: center;
+        gap: 14px;
+        padding: 1rem 1.25rem;
+    }
+
+    .ol-thumb {
+        position: relative;
+        width: 64px;
+        height: 64px;
+    }
+
+    .ol-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 12px;
+        background: #faf5f0;
+        display: block;
+    }
+
+    .ol-more {
+        position: absolute;
+        right: -6px;
+        bottom: -6px;
+        background: #6b5a4c;
+        color: #fff;
+        font-size: .65rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 999px;
+        box-shadow: 0 0 0 2px #fff;
+    }
+
+    .ol-name {
+        font-weight: 700;
+        font-size: .95rem;
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .ol-sub {
+        font-size: .8rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    .ol-total {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .ol-total .lbl {
+        display: block;
+        font-size: .72rem;
+        color: var(--text-muted);
+    }
+
+    .ol-total .val {
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--primary-color);
+    }
+
+    .ol-chevron {
+        color: #c9b6aa;
+    }
+
+    /* Nhãn trạng thái (dùng chung với trang chi tiết) */
+    .os-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 11px;
+        border-radius: 999px;
+        font-size: .75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .os-badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .os-pending { background: #fff8e1; color: #b45309; }
+    .os-confirmed { background: #e3f2fd; color: #1565c0; }
+    .os-shipping { background: #f3e5f5; color: #7b1fa2; }
+    .os-completed { background: #e8f5e9; color: #2e7d32; }
+    .os-cancelled { background: #fdecec; color: #c62828; }
+
+    .ol-empty {
+        background: #fff;
+        border: 1px dashed #f0d9e1;
+        border-radius: 20px;
+        padding: 3rem 1.5rem;
+        text-align: center;
+    }
+
+    .ol-empty i {
+        font-size: 2.8rem;
+        color: #f4b8cb;
+    }
+
+    .ol-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--primary-gradient);
+        color: #fff;
+        border-radius: 999px;
+        padding: 10px 24px;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .ol-btn:hover {
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(233, 30, 99, .25);
+    }
+
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    .animate-fade-up {
+        animation: fadeUp .3s cubic-bezier(.2, 0, 0, 1) both;
+    }
+
+    @media (max-width: 767.98px) {
+        .ol-page {
+            padding-top: 1.25rem;
         }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            line-height: 1.6;
+        .ol-title {
+            font-size: 1.45rem;
         }
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 0.8rem 0;
-            position: sticky;
-            top: 0;
-            z-index: 1030;
+        .ol-card-top {
+            padding: .7rem 1rem;
         }
 
-        .logo {
-            font-size: 1.6rem;
-            font-weight: 800;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .header-icons {
-            gap: 1.2rem;
-        }
-
-        .header-icons a {
-            color: var(--text-main);
-            font-size: 1.5rem;
-            position: relative;
-            text-decoration: none;
-        }
-
-        .cart-badge {
-            position: absolute;
-            top: -5px;
-            right: -8px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 0.65rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            border: 2px solid white;
-        }
-
-        /* Upscaled Order Card */
-        .order-card {
-            background: var(--card-bg);
-            border-radius: var(--radius-md);
-            padding: 1.2rem 1.8rem;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.02);
-            margin-bottom: 1.2rem;
-            transition: var(--transition);
-        }
-
-        .order-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(224, 90, 126, 0.1);
-        }
-
-        .card-inner {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            width: 100%;
-        }
-
-        .order-img-wrapper {
-            position: relative;
-            width: 70px;
-            height: 70px;
-            flex-shrink: 0;
-        }
-
-        .order-thumb {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 12px;
-        }
-
-        .more-items {
-            position: absolute;
-            bottom: -5px;
-            right: -5px;
-            background: var(--primary-color);
-            color: white;
-            font-size: 0.6rem;
-            padding: 2px 6px;
-            border-radius: 50px;
-            border: 2px solid white;
-        }
-
-        .order-main-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .order-code {
-            font-weight: 800;
-            font-size: 1.15rem;
-            color: var(--text-main);
+        .ol-date {
             display: block;
-            margin-bottom: 2px;
+            margin: 2px 0 0;
+            font-size: .78rem;
         }
 
-        .order-date {
-            font-size: 0.85rem;
-            color: var(--text-muted);
+        /* Ảnh | tên + tổng tiền (xếp dọc) */
+        .ol-card-body {
+            grid-template-columns: 56px minmax(0, 1fr) 14px;
+            gap: 12px;
+            padding: .85rem 1rem;
         }
 
-        .order-meta-info {
-            display: flex;
-            align-items: center;
-            gap: 3rem;
-            flex-shrink: 0;
+        .ol-thumb {
+            width: 56px;
+            height: 56px;
         }
 
-        .meta-item {
-            display: flex;
-            flex-direction: column;
-            min-width: 110px;
+        .ol-name {
+            font-size: .9rem;
         }
 
-        .meta-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: #bbb;
-            margin-bottom: 3px;
+        .ol-total {
+            grid-column: 2;
+            grid-row: 2;
+            text-align: left;
+            margin-top: -6px;
         }
 
-        .meta-val {
-            font-weight: 700;
+        .ol-total .lbl {
+            display: inline;
+            margin-right: 6px;
+        }
+
+        .ol-total .val {
             font-size: 1rem;
         }
 
-        .status-badge {
-            padding: 6px 16px;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+        .ol-chevron {
+            grid-column: 3;
+            grid-row: 1 / span 2;
         }
 
-        .status-pending { background: #fff8e1; color: #f57f17; }
-        .status-confirmed { background: #e3f2fd; color: #1976d2; }
-        .status-shipping { background: #f3e5f5; color: #7b1fa2; }
-        .status-completed { background: #e8f5e9; color: #2e7d32; }
-        .status-cancelled { background: #ffebee; color: #c62828; }
-
-        .btn-view {
-            padding: 10px 22px;
-            border-radius: 14px;
-            background: #FCE4EC;
-            color: var(--primary-color);
-            font-weight: 800;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: var(--transition);
+        .ol-card:hover {
+            transform: none;
         }
+    }
+</style>
 
-        .btn-view:hover {
-            background: var(--primary-color);
-            color: white;
-            box-shadow: 0 5px 15px rgba(233, 30, 99, 0.3);
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 991px) {
-            .order-meta-info {
-                gap: 1.5rem;
-            }
-        }
-
-        @media (max-width: 767px) {
-            .order-card {
-                padding: 1.2rem;
-            }
-            .card-inner {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 1rem;
-            }
-            .order-top-row {
-                display: flex;
-                align-items: flex-start;
-                gap: 1rem;
-                width: 100%;
-                border-bottom: 1px solid #f8f8f8;
-                padding-bottom: 0.8rem;
-            }
-            .order-meta-info {
-                flex-direction: row;
-                flex-wrap: wrap;
-                width: 100%;
-                gap: 1rem;
-                align-items: flex-start;
-            }
-            .meta-item {
-                min-width: calc(50% - 0.5rem);
-                flex: 1;
-            }
-            .meta-item.d-none.d-md-flex {
-                display: flex !important;
-                min-width: 100%;
-                margin-bottom: 0.2rem;
-            }
-            .btn-view {
-                width: 100%;
-                text-align: center;
-                padding: 10px;
-                font-size: 0.9rem;
-                margin-top: 0.5rem;
-            }
-        }
-
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-fade-up {
-            animation: fadeUp 0.6s cubic-bezier(0.2, 0, 0, 1) forwards;
-        }
-    </style>
-</head>
-
-<body>
-
-    <header class="header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-6">
-                    <a href="index.php?router=customers" class="logo">
-                        <i class="bi bi-flower2"></i> Góc Nhỏ Có Hoa
-                    </a>
-                </div>
-                <div class="col-6 text-end">
-                    <div class="header-icons d-flex justify-content-end align-items-center">
-                        <a href="index.php?router=customers" title="Trang chủ"><i class="bi bi-house-door"></i></a>
-                        <a href="index.php?router=customers&controller=order&action=listOrders" title="Đơn hàng"><i class="bi bi-receipt"></i></a>
-                        <?php
-                        $cartCount = 0;
-                        if (isset($_SESSION['customer'])) {
-                            require_once __DIR__ . '/../../../models/cart_model.php';
-                            $cartModel = new CartModel();
-                            $cartCount = $cartModel->getCartCount($_SESSION['customer']['customer_id']);
-                        }
-                        ?>
-                        <a href="index.php?router=customers&controller=cart&action=listCart">
-                            <i class="bi bi-bag"></i>
-                            <span class="cart-badge"><?= $cartCount ?></span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <div class="container my-5" style="max-width: 1000px;">
-        <h1 class="heading-font fw-bold mb-5 animate-fade-up">Đơn hàng của tôi</h1>
-
-        <?php if (empty($orders)): ?>
-            <div class="text-center py-5 animate-fade-up">
-                <i class="bi bi-receipt-cutoff display-1 text-muted opacity-25"></i>
-                <h3 class="fw-bold mt-4">Chưa có đơn hàng nào</h3>
-                <p class="text-muted">Bạn chưa chọn được bó hoa nào sao?</p>
-                <a href="index.php?router=customers" class="btn btn-primary rounded-pill px-5 py-3 mt-4 fw-bold" style="background: var(--primary-gradient); border: none;">MUA SẮM NGAY</a>
-            </div>
-        <?php else: ?>
-            <div class="row">
-                <?php foreach ($orders as $order): ?>
-                    <div class="col-12 animate-fade-up">
-                        <div class="order-card">
-                            <div class="card-inner">
-                                <div class="order-top-row">
-                                    <div class="order-img-wrapper">
-                                        <img src="uploads/<?= htmlspecialchars($order['first_product_image']) ?>" 
-                                             class="order-thumb" 
-                                             onerror="this.src='https://placehold.co/100x100?text=Flower'">
-                                        <?php if ($order['total_products'] > 1): ?>
-                                            <span class="more-items">+<?= $order['total_products'] - 1 ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="order-main-info">
-                                        <span class="order-code"><?= htmlspecialchars($order['order_code']) ?></span>
-                                        <span class="order-date"><i class="bi bi-calendar3 me-1"></i> <?= date('d/m/Y H:i', strtotime($order['order_date'])) ?></span>
-                                    </div>
-                                </div>
-
-                                <div class="order-meta-info">
-                                    <div class="meta-item d-none d-md-flex">
-                                        <span class="meta-label">Trạng thái</span>
-                                        <?php
-                                        $statusLabels = [
-                                            'pending' => 'Chờ xử lý',
-                                            'confirmed' => 'Đã xác nhận',
-                                            'shipping' => 'Đang giao hàng',
-                                            'completed' => 'Đã hoàn thành',
-                                            'cancelled' => 'Đã hủy'
-                                        ];
-                                        ?>
-                                        <span class="status-badge status-<?= $order['order_status'] ?>" style="width: fit-content;">
-                                            <?= $statusLabels[$order['order_status']] ?? $order['order_status'] ?>
-                                        </span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">Tổng cộng</span>
-                                        <span class="meta-val text-danger fs-5"><?= number_format($order['total_amount'], 0, ',', '.') ?>đ</span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">Phương thức</span>
-                                        <span class="meta-val">
-                                            <?php
-                                            $methods = ['cod' => 'Tiền mặt (COD)', 'bank_transfer' => 'Chuyển khoản', 'e_wallet' => 'Ví điện tử'];
-                                            echo $methods[$order['payment_method']] ?? $order['payment_method'];
-                                            ?>
-                                        </span>
-                                    </div>
-                                    <a href="index.php?router=customers&controller=order&action=viewDetail&id=<?= $order['order_id'] ?>" class="btn-view">
-                                        XEM CHI TIẾT
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
-        <div class="text-center mt-5">
-            <a href="index.php?router=customers" class="text-muted text-decoration-none fw-bold">
-                <i class="bi bi-arrow-left me-1"></i> TIẾP TỤC MUA SẮM
-            </a>
-        </div>
+<div class="container ol-page mb-5">
+    <div class="ol-head">
+        <h1 class="ol-title">Đơn hàng của tôi<?php if ($totalOrders): ?><small><?= (int) $totalOrders ?> đơn</small><?php endif; ?></h1>
+        <a href="index.php?router=customers" class="ol-shop"><i class="bi bi-bag"></i> Tiếp tục mua sắm</a>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    <?php if ($totalOrders === 0): ?>
+        <div class="ol-empty animate-fade-up">
+            <i class="bi bi-receipt-cutoff"></i>
+            <h4 class="fw-bold mt-3">Bạn chưa có đơn hàng nào</h4>
+            <p class="text-muted mb-4">Chọn một bó hoa thật xinh để gửi tặng người thương nhé!</p>
+            <a href="index.php?router=customers" class="ol-btn">Mua sắm ngay <i class="bi bi-arrow-right"></i></a>
+        </div>
+    <?php else: ?>
+        <nav class="ol-tabs" aria-label="Lọc theo trạng thái">
+            <?php foreach ($tabs as $key => $label):
+                $count = $key === '' ? $totalOrders : (int) ($statusCounts[$key] ?? 0);
+                $url = $key === '' ? $listUrl : $listUrl . '&status=' . $key;
+            ?>
+                <a href="<?= $url ?>" class="ol-tab<?= $currentStatus === $key ? ' active' : '' ?>" <?= $currentStatus === $key ? 'aria-current="page"' : '' ?>>
+                    <?= $e($label) ?> <span class="n"><?= $count ?></span>
+                </a>
+            <?php endforeach; ?>
+        </nav>
 
-</html>
+        <?php if (!$orders): ?>
+            <div class="ol-empty">
+                <i class="bi bi-inbox"></i>
+                <h5 class="fw-bold mt-3">Không có đơn nào “<?= $e(OrderHelper::statusLabel($currentStatus)) ?>”</h5>
+                <a href="<?= $listUrl ?>" class="ol-shop">Xem tất cả đơn hàng</a>
+            </div>
+        <?php else: ?>
+            <?php foreach ($orders as $i => $order):
+                $more = (int) $order['total_products'] - 1;
+                $detailUrl = 'index.php?router=customers&controller=order&action=viewDetail&id=' . (int) $order['order_id'];
+            ?>
+                <a href="<?= $detailUrl ?>" class="ol-card animate-fade-up" style="animation-delay: <?= min($i * 20, 100) ?>ms">
+                    <div class="ol-card-top">
+                        <div>
+                            <span class="ol-code"><?= $e($order['order_code']) ?></span>
+                            <span class="ol-date"><?= date('d/m/Y · H:i', strtotime($order['order_date'])) ?></span>
+                        </div>
+                        <span class="os-badge os-<?= $e($order['order_status']) ?>"><?= $e(OrderHelper::statusLabel($order['order_status'])) ?></span>
+                    </div>
+                    <div class="ol-card-body">
+                        <div class="ol-thumb">
+                            <img src="<?= $e(productImageUrl($order['first_product_image'], '200x200')) ?>" alt="" loading="lazy"
+                                onerror="this.src='https://placehold.co/100x100?text=Flower'">
+                            <?php if ($more > 0): ?><span class="ol-more">+<?= $more ?></span><?php endif; ?>
+                        </div>
+                        <div style="min-width:0">
+                            <div class="ol-name"><?= $e($order['first_product_name'] ?? 'Đơn hàng') ?></div>
+                            <div class="ol-sub">
+                                <?= (int) $order['total_qty'] ?> sản phẩm<?= $more > 0 ? ' · và ' . $more . ' mẫu hoa khác' : '' ?>
+                            </div>
+                        </div>
+                        <div class="ol-total">
+                            <span class="lbl">Tổng tiền</span>
+                            <span class="val"><?= $money($order['total_amount']) ?></span>
+                        </div>
+                        <i class="bi bi-chevron-right ol-chevron" aria-hidden="true"></i>
+                    </div>
+                </a>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>

@@ -102,9 +102,10 @@ class OrderController
         }
 
         if (in_array($order['order_status'], ['pending', 'confirmed', 'shipping'])) {
-            $updateStatusOrder = $this->model->updateOrderStatus($order_id, 'cancelled');
+            // Huỷ + hoàn lại tồn kho trong 1 transaction
+            $updateStatusOrder = $this->model->cancelOrder($order_id);
             if ($updateStatusOrder) {
-                MessageHelper::success("Đơn hàng đã được hủy thành công !!!");
+                MessageHelper::success("Đơn hàng đã được hủy, số lượng sản phẩm đã được hoàn lại kho !!!");
             } else {
                 MessageHelper::error("HỦY đơn hàng thất bại");
             }

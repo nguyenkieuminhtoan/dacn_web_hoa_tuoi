@@ -60,7 +60,10 @@ if (!class_exists($className)) {
 }
 
 $controller = new $className();
-if (!method_exists($className, $actionURL)) {
-    die("<h2><i> Không tìm thấy action:</i> $actionURL trong controller: $className</h2>");
+// Chỉ gọi được action public (is_callable), không gọi hàm "magic"/nội bộ (__construct, _xxx).
+// Tên action lấy từ URL -> phải escape khi in ra (tránh chèn mã HTML/JS).
+if (!is_string($actionURL) || $actionURL === '' || $actionURL[0] === '_' || !is_callable([$controller, $actionURL])) {
+    http_response_code(404);
+    die("<h2><i> Không tìm thấy action:</i> " . htmlspecialchars(is_string($actionURL) ? $actionURL : '', ENT_QUOTES, 'UTF-8') . " trong controller: $className</h2>");
 }
 $controller->$actionURL();
